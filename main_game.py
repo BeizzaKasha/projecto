@@ -35,42 +35,39 @@ class Enemy(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, width, height):
+    def __init__(self):
         super(Player, self).__init__()
         self.mouse = pygame
         self.rectangle = pygame.Surface((24, 24), pygame.SRCALPHA)
         self.rectangle.fill(pygame.Color('red'))
         self.rectangle.fill(pygame.Color('white'), (5, 6, 14, 5))
+        self.rot_image = self.rectangle
+        self.rect = self.rectangle.get_rect()
         self.speed = 10
-        self.surface = pygame.display.set_mode((width, height))
-        self.center = pygame.Vector2(self.sprite.rect.center)
 
     def mov(self):
-        mouse_pos = pygame.mouse.get_pos()
-        # print(mouse_pos)
-        self.set_directangleion()
 
         val = "successful"
         pressed_keys = pygame.key.get_pressed()
         if pressed_keys[K_w]:
-            self.rectangle.move_ip(0, -self.speed)
+            self.rect.move_ip(0, -self.speed)
         if pressed_keys[K_s]:
-            self.rectangle.move_ip(0, self.speed)
+            self.rect.move_ip(0, self.speed)
         if pressed_keys[K_a]:
-            self.rectangle.move_ip(-self.speed, 0)
+            self.rect.move_ip(-self.speed, 0)
         if pressed_keys[K_d]:
-            self.rectangle.move_ip(self.speed, 0)
+            self.rect.move_ip(self.speed, 0)
         if pressed_keys[K_SPACE]:
             val = self.fire()
 
-        if self.rectangle.left < 0:
-            self.rectangle.left = 0
-        if self.rectangle.right > SCREEN_WIDTH:
-            self.rectangle.right = SCREEN_WIDTH
-        if self.rectangle.top <= 0:
-            self.rectangle.top = 0
-        if self.rectangle.bottom >= SCREEN_HEIGHT:
-            self.rectangle.bottom = SCREEN_HEIGHT
+        if self.rect.left < 0:
+            self.rect.center = (self.rect.width/2, self.rect.y + self.rect.height/2)
+        if self.rect.right > SCREEN_WIDTH - self.rect.width/2:
+            self.rect.center = (SCREEN_WIDTH - self.rect.width - 1, self.rect.y + self.rect.height/2)
+        if self.rect.top < 0:
+            self.rect.center = (self.rect.x + self.rect.width/2, self.rect.height/2)
+        if self.rect.bottom > SCREEN_HEIGHT - self.rect.height/2:
+            self.rect.center = (self.rect.x + self.rect.width/2, SCREEN_HEIGHT - self.rect.height + 1)
 
         return val
 
@@ -79,28 +76,18 @@ class Player(pygame.sprite.Sprite):
         return new_enemy
 
     def set_directangleion(self):
-        mouse_pos = pygame.mouse.get_pos()
-        """print(self.center)
-        print("mouse: " + str(mouse_pos))"""
-        if mouse_pos[0] == self.center[0] and mouse_pos[1] == self.center[1]:
+        mx, my = pygame.mouse.get_pos()
+        """print("player: " + str(self.rect.center))
+        print("muse: " + str(mx) + ", " + str(my))"""
+        dx, dy = mx - self.rect.centerx, my - self.rect.centery
+        if dx == 0:
             angle = 0
         else:
-            top = abs(self.center[0] - mouse_pos[0])
-            bottom = int(math.sqrt((self.center[0] - mouse_pos[0]) ** 2 + (self.center[1] - mouse_pos[1]) ** 2))
-            if top / bottom < -1 or top / bottom > 1:
-                angle = "error -->" + str(top / bottom) + ",  " + str(self.center[0]) + "," + str(mouse_pos[0]) + ",  " + str(self.center[1]) + "," + str(mouse_pos[1])
-            else:
-                angle = math.acos(top / bottom) * 180 / math.pi
-                if self.center[1] - mouse_pos[1] > 0 and mouse_pos[0] - self.center[0] < 0:
-                    angle = 180 - angle
-                elif self.center[1] - mouse_pos[1] < 0 and mouse_pos[0] - self.center[0] < 0:
-                    angle += 180
-                if self.center[1] - mouse_pos[1] < 0 and mouse_pos[0] - self.center[0] > 0:
-                    angle = 360 - angle
-            # print(str(top) + ", " + str(bottom))
-        print(angle)
-        pygame.transform.rotate(self.surface, angle)
-        # self.directangleion = pygame.Vector2(sin(rad), cos(rad))
+            angle = math.degrees(math.atan(-dy / dx))
+
+        self.rot_image = pygame.transform.rotate(self.rectangle, angle)
+        print(int(angle))
+        # self.rect = self.rot_image.get_rect(center=self.rot_image.get_rect().center) # (self.rectangle.get_rect().x + self.rect.x, self.rectangle.get_rect().y + self.rect.y)
 
 
 pygame.init()
@@ -113,7 +100,7 @@ clock = pygame.time.Clock()
 
 
 def main():
-    player = Player(SCREEN_WIDTH, SCREEN_HEIGHT)
+    player = Player()
     enemies = pygame.sprite.Group()
     all_sprites = pygame.sprite.Group()
     all_sprites.add(player)
@@ -130,6 +117,7 @@ def main():
 
         screen.fill((0, 0, 0))
 
+        player.set_directangleion()
         val = player.mov()
         if val != "successful":
             enemies.add(val)
@@ -137,7 +125,7 @@ def main():
         enemies.update()
 
         for entity in all_sprites:
-            screen.blit(entity.surf, entity.rectangle)
+            screen.blit(entity.rot_image, entity.rect)
 
         if pygame.sprite.spritecollideany(player, enemies):
             player.kill()
