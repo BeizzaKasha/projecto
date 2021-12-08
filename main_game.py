@@ -17,21 +17,20 @@ import random
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, player):
         super(Enemy, self).__init__()
-        self.surf = pygame.Surface((10, 5))
-        self.surf.fill((255, 255, 255))
-        self.rectangle = self.surf.get_rectangle(
-            center=(
-                # random.randint(player.rectangle[0], player.rectangle[0] + 50),
-                player.rectangle[0] - 5,
-                random.randint(player.rectangle[1], player.rectangle[1] + 25),
-            )
-        )
-        self.speed = 15
+        self.rectangle = pygame.Surface((player.rect.top, player.rect.top), pygame.SRCALPHA)
+        self.rectangle.fill(pygame.Color('white'), (5, 6, 10, 5))
+        # self.rectangle = pygame.Surface((player.rect.top, player.rect.top))
+        self.rect = self.rectangle.get_rect()
+        self.rot_image = self.rectangle
+        self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
+        self.angle = player.angle + 90
+        self.speed = 2
 
     def update(self):
-        self.rectangle.move_ip(-self.speed, 0)
-        if self.rectangle.right < 0:
-            self.kill()
+        self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
+        self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
+        self.rect.move_ip(math.sin(self.angle) * self.speed, math.cos(self.angle) * self.speed)
+
 
 
 class Player(pygame.sprite.Sprite):
@@ -41,8 +40,10 @@ class Player(pygame.sprite.Sprite):
         self.rectangle = pygame.Surface((24, 24), pygame.SRCALPHA)
         self.rectangle.fill(pygame.Color('red'))
         self.rectangle.fill(pygame.Color('white'), (5, 6, 14, 5))
-        self.rot_image = self.rectangle
         self.rect = self.rectangle.get_rect()
+        self.rot_image = self.rectangle
+        self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
+        self.angle = 0
         self.speed = 10
 
     def mov(self):
@@ -61,13 +62,13 @@ class Player(pygame.sprite.Sprite):
             val = self.fire()
 
         if self.rect.left < 0:
-            self.rect.center = (self.rect.width/2, self.rect.y + self.rect.height/2)
-        if self.rect.right > SCREEN_WIDTH - self.rect.width/2:
-            self.rect.center = (SCREEN_WIDTH - self.rect.width - 1, self.rect.y + self.rect.height/2)
+            self.rect.center = (self.rect.width / 2, self.rect.y + self.rect.height / 2)
+        if self.rect.right > SCREEN_WIDTH - self.rect.width / 2:
+            self.rect.center = (SCREEN_WIDTH - self.rect.width - 1, self.rect.y + self.rect.height / 2)
         if self.rect.top < 0:
-            self.rect.center = (self.rect.x + self.rect.width/2, self.rect.height/2)
-        if self.rect.bottom > SCREEN_HEIGHT - self.rect.height/2:
-            self.rect.center = (self.rect.x + self.rect.width/2, SCREEN_HEIGHT - self.rect.height + 1)
+            self.rect.center = (self.rect.x + self.rect.width / 2, self.rect.height / 2)
+        if self.rect.bottom > SCREEN_HEIGHT - self.rect.height / 2:
+            self.rect.center = (self.rect.x + self.rect.width / 2, SCREEN_HEIGHT - self.rect.height + 1)
 
         return val
 
@@ -77,17 +78,14 @@ class Player(pygame.sprite.Sprite):
 
     def set_directangleion(self):
         mx, my = pygame.mouse.get_pos()
-        """print("player: " + str(self.rect.center))
-        print("muse: " + str(mx) + ", " + str(my))"""
         dx, dy = mx - self.rect.centerx, my - self.rect.centery
-        if dx == 0:
-            angle = 0
-        else:
-            angle = math.degrees(math.atan(-dy / dx))
+        self.angle = math.degrees(math.atan2(-dy, dx)) - 90
 
-        self.rot_image = pygame.transform.rotate(self.rectangle, angle)
-        print(int(angle))
-        # self.rect = self.rot_image.get_rect(center=self.rot_image.get_rect().center) # (self.rectangle.get_rect().x + self.rect.x, self.rectangle.get_rect().y + self.rect.y)
+        self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
+        self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
+
+        """print(str(pygame.transform.rotate(self.rectangle, self.angle)))
+        print(int(self.angle))"""
 
 
 pygame.init()
@@ -102,8 +100,7 @@ clock = pygame.time.Clock()
 def main():
     player = Player()
     enemies = pygame.sprite.Group()
-    all_sprites = pygame.sprite.Group()
-    all_sprites.add(player)
+    all_sprites = [player]
 
     running = True
 
@@ -121,11 +118,11 @@ def main():
         val = player.mov()
         if val != "successful":
             enemies.add(val)
-            all_sprites.add(val)
+            all_sprites.append(val)
         enemies.update()
 
         for entity in all_sprites:
-            screen.blit(entity.rot_image, entity.rect)
+            screen.blit(entity.rot_image, entity.rot_image_rect.topleft)
 
         if pygame.sprite.spritecollideany(player, enemies):
             player.kill()
