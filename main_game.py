@@ -17,19 +17,24 @@ import random
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, player):
         super(Enemy, self).__init__()
-        self.rectangle = pygame.Surface((player.rect.top, player.rect.top), pygame.SRCALPHA)
-        self.rectangle.fill(pygame.Color('white'), (5, 6, 10, 5))
+        self.angle = (player.angle + 90) * math.pi/180
+        self.rectangle = pygame.Surface((10, 10), pygame.SRCALPHA) # (player.rect.centerx + 100*math.cos(self.angle), player.rect.centery - 100*math.sin(self.angle))
+        self.rectangle.fill(pygame.Color('white'))
         # self.rectangle = pygame.Surface((player.rect.top, player.rect.top))
         self.rect = self.rectangle.get_rect()
+        self.rect.move_ip(int(player.rect.centerx + 16*math.cos(self.angle) - 3), int(player.rect.centery - 16*math.sin(self.angle)) - 3)
         self.rot_image = self.rectangle
         self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
-        self.angle = player.angle + 90
-        self.speed = 2
+        self.speed = 12
+
+        # print("angle:" + str(self.angle))
+        # print(math.cos(self.angle))
+        # print(-math.sin(self.angle))
 
     def update(self):
-        self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
+        self.rect.move_ip(math.cos(self.angle) * self.speed, math.sin(self.angle) * -self.speed)
+        # self.rot_image = pygame.transform.rotate(self.rectangle, self.angle * 180/math.pi)
         self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
-        self.rect.move_ip(math.sin(self.angle) * self.speed, math.cos(self.angle) * self.speed)
 
 
 
@@ -44,7 +49,9 @@ class Player(pygame.sprite.Sprite):
         self.rot_image = self.rectangle
         self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
         self.angle = 0
-        self.speed = 10
+        self.speed = 8
+        self.firing_speed = 2
+        self.fire_wait = 80
 
     def mov(self):
 
@@ -58,8 +65,9 @@ class Player(pygame.sprite.Sprite):
             self.rect.move_ip(-self.speed, 0)
         if pressed_keys[K_d]:
             self.rect.move_ip(self.speed, 0)
-        if pressed_keys[K_SPACE]:
+        if pressed_keys[K_SPACE] and self.fire_wait == 0:
             val = self.fire()
+            self.fire_wait = 100
 
         if self.rect.left < 0:
             self.rect.center = (self.rect.width / 2, self.rect.y + self.rect.height / 2)
@@ -69,6 +77,9 @@ class Player(pygame.sprite.Sprite):
             self.rect.center = (self.rect.x + self.rect.width / 2, self.rect.height / 2)
         if self.rect.bottom > SCREEN_HEIGHT - self.rect.height / 2:
             self.rect.center = (self.rect.x + self.rect.width / 2, SCREEN_HEIGHT - self.rect.height + 1)
+
+        if self.fire_wait > 0:
+            self.fire_wait -= self.firing_speed
 
         return val
 
