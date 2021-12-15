@@ -51,7 +51,7 @@ class Player(pygame.sprite.Sprite):
         self.angle = 0
         self.speed = 8
         self.firing_speed = 2
-        self.fire_wait = 80
+        self.fire_wait = 100
 
     def mov(self):
 
@@ -65,9 +65,9 @@ class Player(pygame.sprite.Sprite):
             self.rect.move_ip(-self.speed, 0)
         if pressed_keys[K_d]:
             self.rect.move_ip(self.speed, 0)
-        if pressed_keys[K_SPACE] and self.fire_wait == 0:
+        if pressed_keys[K_SPACE] and self.fire_wait <= 0:
             val = self.fire()
-            self.fire_wait = 100
+            self.fire_wait = 5
 
         if self.rect.left < 0:
             self.rect.center = (self.rect.width / 2, self.rect.y + self.rect.height / 2)
