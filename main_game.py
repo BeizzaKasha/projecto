@@ -68,6 +68,8 @@ class Player(pygame.sprite.Sprite):
         if mouse[0] and self.fire_wait <= 0:
             val = self.fire()
             self.fire_wait = 60
+        if pressed_keys[pygame.K_p]:
+            self.teleport(walls)
 
         """if self.rect.left < 0 or pygame.sprite.spritecollideany(self, walls):
             self.rect.center = (self.rect.width / 2, self.rect.y + self.rect.height / 2)
@@ -82,6 +84,12 @@ class Player(pygame.sprite.Sprite):
             self.fire_wait -= self.firing_speed
 
         return val
+
+    def teleport(self, walls):
+        self.rect.center = (random.randint(1, 801), random.randint(1, 601))
+        print(self.rect)
+        if pygame.sprite.spritecollideany(self, walls):
+            self.teleport(walls)
 
     def fire(self):
         new_enemy = Enemy(self)
