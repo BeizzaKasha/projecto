@@ -12,6 +12,13 @@ from pygame.locals import (
 )
 
 
+class Demo(pygame.sprite.Sprite):
+    def __init__(self):
+        super(Demo, self).__init__()
+        self.rectangle = pygame.Surface((24, 24), pygame.SRCALPHA)
+        self.rect = self.rectangle.get_rect()
+
+
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, player):
         super(Enemy, self).__init__()
@@ -33,7 +40,7 @@ class Enemy(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super(Player, self).__init__()
-        self.mouse = pygame
+        self.mouse = pygame.mouse
         self.rectangle = pygame.Surface((24, 24), pygame.SRCALPHA)
         self.rectangle.fill(pygame.Color('red'))
         self.rectangle.fill(pygame.Color('white'), (5, 6, 14, 5))
@@ -44,6 +51,7 @@ class Player(pygame.sprite.Sprite):
         self.speed = 8
         self.firing_speed = 15
         self.fire_wait = 120
+        self.t_wait = 120
 
     def mov(self, walls):
         mouse = pygame.mouse.get_pressed(3)
@@ -68,8 +76,9 @@ class Player(pygame.sprite.Sprite):
         if mouse[0] and self.fire_wait <= 0:
             val = self.fire()
             self.fire_wait = 60
-        if pressed_keys[pygame.K_p]:
-            self.teleport(walls)
+        if pressed_keys[pygame.K_p] and self.t_wait <= 0:
+            self.rect.center = self.teleport(walls)
+            self.t_wait = 150
 
         """if self.rect.left < 0 or pygame.sprite.spritecollideany(self, walls):
             self.rect.center = (self.rect.width / 2, self.rect.y + self.rect.height / 2)
@@ -83,13 +92,22 @@ class Player(pygame.sprite.Sprite):
         if self.fire_wait > 0:
             self.fire_wait -= self.firing_speed
 
+        if self.t_wait > 0:
+            self.t_wait -= self.firing_speed
+
         return val
 
     def teleport(self, walls):
-        self.rect.center = (random.randint(1, 801), random.randint(1, 601))
-        print(self.rect)
-        if pygame.sprite.spritecollideany(self, walls):
-            self.teleport(walls)
+        demo = Demo()
+        t = False
+        while not t:
+            demo.rect.center = (random.randint(1, 801), random.randint(1, 601))
+            if not pygame.sprite.spritecollideany(demo, walls):
+                # print(self.rect.center)
+                t = True
+        new_center = demo.rect.center
+        demo.kill()
+        return new_center
 
     def fire(self):
         new_enemy = Enemy(self)
@@ -118,11 +136,23 @@ class Walls(pygame.sprite.Sprite):
         self.rect = self.rectangle.get_rect(center=self.rect.center)
 
 
+class LeaderBoard(pygame.sprite.Sprite):
+    def __init__(self):
+        super(LeaderBoard, self).__init__()
+        self.center = (900, 300)
+        self.size = (100, 300)
+        self.rectangle = pygame.Surface(self.size, pygame.SRCALPHA)
+        self.rectangle.fill(pygame.Color('red'))
+
+
 pygame.init()
 
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+rect = pygame.Surface((100, 300), pygame.SRCALPHA) #לסיים את הקטע הזה!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.rectangle.fill(pygame.Color('red'))
+pygame.draw.rect(screen, "red", self.rect)
 
 clock = pygame.time.Clock()
 
@@ -135,7 +165,10 @@ def main():
         wall = Walls()
         all_sprites.add(wall)
 
+    leader_board = LeaderBoard()
+
     running = True
+    player.rect.center = player.teleport(all_sprites)
 
     while running:
         for event in pygame.event.get():
