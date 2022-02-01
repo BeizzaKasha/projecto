@@ -1,4 +1,6 @@
 import math
+import sys
+
 import pygame
 import random
 from pygame.locals import (
@@ -149,15 +151,16 @@ pygame.init()
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
+pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+display_surface = pygame.display.set_mode((1000, 20))
+pygame.display.set_caption('Show Text')
+font = pygame.font.Font('freesansbold.ttf', 32)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-rect = pygame.Surface((100, 300), pygame.SRCALPHA) #לסיים את הקטע הזה!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        self.rectangle.fill(pygame.Color('red'))
-pygame.draw.rect(screen, "red", self.rect)
-
-clock = pygame.time.Clock()
 
 
 def main():
+    game_time = 500
+
     player = Player()
     enemies = pygame.sprite.Group()
     all_sprites = pygame.sprite.Group()
@@ -165,7 +168,19 @@ def main():
         wall = Walls()
         all_sprites.add(wall)
 
-    leader_board = LeaderBoard()
+    bord = pygame.sprite.Sprite()
+    bord.rectangle = pygame.Surface((200, 600), pygame.SRCALPHA)
+    bord.rectangle.fill(pygame.Color('black'))
+    bord.rect = bord.rectangle.get_rect()
+    bord.rect.move_ip((800, 0))
+    all_sprites.add(bord)
+
+    line = pygame.sprite.Sprite()
+    line.rectangle = pygame.Surface((8, 600), pygame.SRCALPHA)
+    line.rectangle.fill(pygame.Color('white'))
+    line.rect = line.rectangle.get_rect()
+    line.rect.move_ip((800, 0))
+    all_sprites.add(line)
 
     running = True
     player.rect.center = player.teleport(all_sprites)
@@ -200,13 +215,24 @@ def main():
             if pygame.sprite.spritecollideany(bullet, all_sprites):
                 bullet.kill()
 
+        text = font.render('leader bord', True, (255, 0, 0), (0, 0, 0))
+        textRect = text.get_rect()
+        textRect.center = (200 // 2 + 800, 20 // 2)
+        display_surface.blit(text, textRect)
+
         if pygame.sprite.spritecollideany(player, enemies):
             player.kill()
             running = False
 
         pygame.display.flip()
-        clock.tick(60)  # 60 frames per second
+        pygame.time.delay(15)  # 60 frames per second
+        game_time -= 1
+        print(game_time)
+        if game_time == 0:
+            pygame.time.wait(800)
+            main()
 
+    sys.exit()
 
 if __name__ == "__main__":
     main()
