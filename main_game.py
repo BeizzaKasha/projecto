@@ -24,19 +24,34 @@ class Demo(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, player):
         super(Enemy, self).__init__()
-        self.angle = (player.angle + 90) * math.pi / 180
         self.rectangle = pygame.Surface((10, 10), pygame.SRCALPHA)
         self.rectangle.fill(pygame.Color('white'))
         self.rect = self.rectangle.get_rect()
-        self.rect.move_ip(int(player.rect.centerx + 20 * math.cos(self.angle)),
-                          int(player.rect.centery - 20 * math.sin(self.angle)))
+
+        self.angle = (player.angle + 90) * math.pi / 180
+        self.rect.move_ip(int(player.rect.centerx + 28 * math.cos(self.angle)),
+                          int(player.rect.centery - 28 * math.sin(self.angle)))
         self.rot_image = self.rectangle
         self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
-        self.bullet_speed = 12
+
+        self.owner = player
+        self.bullet_speed = 10
 
     def update(self):
         self.rect.move_ip(math.cos(self.angle) * self.bullet_speed, math.sin(self.angle) * -self.bullet_speed)
         self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
+
+
+def teleport(walls):
+    demo = Demo()
+    t = False
+    while not t:
+        demo.rect.center = (random.randint(1, 801), random.randint(1, 601))
+        if not pygame.sprite.spritecollideany(demo, walls):
+            t = True
+    new_center = demo.rect.center
+    demo.kill()
+    return new_center
 
 
 class Player(pygame.sprite.Sprite):
@@ -54,6 +69,8 @@ class Player(pygame.sprite.Sprite):
         self.firing_speed = 15
         self.fire_wait = 120
         self.t_wait = 120
+        self.name = "Nadav"
+        self.score = 0
 
     def mov(self, walls):
         mouse = pygame.mouse.get_pressed(3)
@@ -78,38 +95,21 @@ class Player(pygame.sprite.Sprite):
         if mouse[0] and self.fire_wait <= 0:
             val = self.fire()
             self.fire_wait = 60
-        if pressed_keys[pygame.K_p] and self.t_wait <= 0:
-            self.rect.center = self.teleport(walls)
+        if pressed_keys[pygame.K_t] and self.t_wait <= 0:  # cheat move
+            self.rect.center = teleport(walls)
             self.t_wait = 150
-
-        """if self.rect.left < 0 or pygame.sprite.spritecollideany(self, walls):
-            self.rect.center = (self.rect.width / 2, self.rect.y + self.rect.height / 2)
-        if self.rect.right > SCREEN_WIDTH - self.rect.width / 2 or pygame.sprite.spritecollideany(self, walls):
-            self.rect.center = (SCREEN_WIDTH - self.rect.width - 1, self.rect.y + self.rect.height / 2)
-        if self.rect.top < 0 or pygame.sprite.spritecollideany(self, walls):
-            self.rect.center = (self.rect.x + self.rect.width / 2, self.rect.height / 2)
-        if self.rect.bottom > SCREEN_HEIGHT - self.rect.height / 2 or pygame.sprite.spritecollideany(self, walls):
-            self.rect.center = (self.rect.x + self.rect.width / 2, SCREEN_HEIGHT - self.rect.height + 1)"""
+        if pressed_keys[pygame.K_p] and self.fire_wait <= 0:
+            val = self.fire()
+            val.rect.center = self.rect.center
+            self.fire_wait = 60
 
         if self.fire_wait > 0:
             self.fire_wait -= self.firing_speed
 
-        if self.t_wait > 0:
+        if self.t_wait > 0:  # cheat move
             self.t_wait -= self.firing_speed
 
         return val
-
-    def teleport(self, walls):
-        demo = Demo()
-        t = False
-        while not t:
-            demo.rect.center = (random.randint(1, 801), random.randint(1, 601))
-            if not pygame.sprite.spritecollideany(demo, walls):
-                # print(self.rect.center)
-                t = True
-        new_center = demo.rect.center
-        demo.kill()
-        return new_center
 
     def fire(self):
         new_enemy = Enemy(self)
@@ -138,23 +138,65 @@ class Walls(pygame.sprite.Sprite):
         self.rect = self.rectangle.get_rect(center=self.rect.center)
 
 
-class LeaderBoard(pygame.sprite.Sprite):
+class LeaderBoard:
     def __init__(self):
-        super(LeaderBoard, self).__init__()
-        self.center = (900, 300)
-        self.size = (100, 300)
-        self.rectangle = pygame.Surface(self.size, pygame.SRCALPHA)
-        self.rectangle.fill(pygame.Color('red'))
+        self.bord = pygame.sprite.Sprite()
+        self.bord.rectangle = pygame.Surface((200, 600), pygame.SRCALPHA)
+        self.bord.rectangle.fill(pygame.Color('black'))
+        self.bord.rect = self.bord.rectangle.get_rect()
+        self.bord.rect.move_ip((800, 0))
 
+        self.line = pygame.sprite.Sprite()
+        self.line.rectangle = pygame.Surface((8, 600), pygame.SRCALPHA)
+        self.line.rectangle.fill(pygame.Color('white'))
+        self.line.rect = self.line.rectangle.get_rect()
+        self.line.rect.move_ip((800, 0))
+
+        self.txts = []
+
+        self.font = pygame.font.Font('freesansbold.ttf', 32)
+        text = self.font.render('leaderboard', True, (255, 0, 0), (0, 0, 0))
+        textRect = text.get_rect()
+        textRect.center = (300 // 2 + 800, 10)
+        self.txts.append((text, textRect))
+
+    def set_place(self):
+        place = [self.bord, self.line]
+        return place
+
+    def change_places(self, players):
+        leader_place = 50
+        for player in players:
+            text = self.font.render(str(player.name) + "           " + str(player.score), True, (255, 0, 0), (0, 0, 0))
+            textRect = text.get_rect()
+            textRect.center = (300 // 2 + 800, leader_place)
+            self.txts.append((text, textRect))
+            leader_place += 50
+
+    def bilt(self):
+        for text in self.txts:
+            display_surface.blit(text[0], text[1])
+
+
+def winner(players):
+    winner = players.sprites()[0]
+    for player in players:
+        if winner.score < player.score:
+            winner = player
+    font = pygame.font.Font('freesansbold.ttf', 32)
+    text = font.render(str(winner.name) + "is the winner!!!", True, (255, 0, 0), (0, 0, 0))
+    textRect = text.get_rect()
+    textRect.center = (1000 // 2, 600 // 2)
+    display_surface.blit(text, textRect)# not print!!!!!!!!! to fix!!
+    print(str(winner.name) + "is the winner!!!")
 
 pygame.init()
 
-SCREEN_WIDTH = 1000
+SCREEN_WIDTH = 1100
 SCREEN_HEIGHT = 600
 pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 display_surface = pygame.display.set_mode((1000, 20))
 pygame.display.set_caption('Show Text')
-font = pygame.font.Font('freesansbold.ttf', 32)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 
@@ -162,35 +204,32 @@ def main():
     game_time = 500
 
     player = Player()
+    players = pygame.sprite.Group()
+    players.add(player)
+
     enemies = pygame.sprite.Group()
     all_sprites = pygame.sprite.Group()
+
     for i in range(random.randint(10, 15)):
         wall = Walls()
         all_sprites.add(wall)
 
-    bord = pygame.sprite.Sprite()
-    bord.rectangle = pygame.Surface((200, 600), pygame.SRCALPHA)
-    bord.rectangle.fill(pygame.Color('black'))
-    bord.rect = bord.rectangle.get_rect()
-    bord.rect.move_ip((800, 0))
+    leaderboard = LeaderBoard()
+    leaderboard.change_places(players)
+    bord, line = leaderboard.set_place()
     all_sprites.add(bord)
-
-    line = pygame.sprite.Sprite()
-    line.rectangle = pygame.Surface((8, 600), pygame.SRCALPHA)
-    line.rectangle.fill(pygame.Color('white'))
-    line.rect = line.rectangle.get_rect()
-    line.rect.move_ip((800, 0))
     all_sprites.add(line)
 
+    player.rect.center = teleport(all_sprites)
+
     running = True
-    player.rect.center = player.teleport(all_sprites)
 
     while running:
         for event in pygame.event.get():
             if event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     running = False
-                if event.key == pygame.locals.K_q:
+                if event.key == pygame.locals.K_q:  # cheat move
                     running = False
                     main()
             elif event.type == QUIT:
@@ -198,12 +237,12 @@ def main():
 
         screen.fill((0, 0, 0))
 
-        player.set_directangleion()
-        val = player.mov(all_sprites)
-        if val != "successful":
-            enemies.add(val)
-            # all_sprites.append(val)
-        enemies.update()
+        if game_time > 0:
+            player.set_directangleion()
+            val = player.mov(all_sprites)
+            if val != "successful":
+                enemies.add(val)
+            enemies.update()
 
         for entity in all_sprites:
             screen.blit(entity.rectangle, entity.rect.topleft)
@@ -214,25 +253,30 @@ def main():
             pygame.draw.circle(screen, (255, 255, 255), (bullet.rot_image_rect.x, bullet.rot_image_rect.y), 5)
             if pygame.sprite.spritecollideany(bullet, all_sprites):
                 bullet.kill()
+            elif pygame.sprite.spritecollideany(bullet, players):
+                for player in players:
+                    if bullet.owner == player:
+                        player.score += 1
+                        player.rect.center = teleport(all_sprites)
+                bullet.kill()
+                leaderboard.change_places(players)
 
-        text = font.render('leader bord', True, (255, 0, 0), (0, 0, 0))
-        textRect = text.get_rect()
-        textRect.center = (200 // 2 + 800, 20 // 2)
-        display_surface.blit(text, textRect)
-
-        if pygame.sprite.spritecollideany(player, enemies):
-            player.kill()
-            running = False
+        leaderboard.bilt()
 
         pygame.display.flip()
         pygame.time.delay(15)  # 60 frames per second
         game_time -= 1
         print(game_time)
-        if game_time == 0:
-            pygame.time.wait(800)
+
+        if game_time < 0:
+            winner(players)
+
+        if game_time == -100:
+            running = False
             main()
 
     sys.exit()
+
 
 if __name__ == "__main__":
     main()
