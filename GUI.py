@@ -18,8 +18,10 @@ def close():
     logging.error("client close")
     sys.exit()
 
-def built_all():
-    print("do here built for what need how it is on server")
+
+def built_all(game):
+    print(str(game) + "do here built for what need how it is on server")
+
 
 def main():
     game = ""
@@ -29,15 +31,16 @@ def main():
 
         try:
             data = my_socket.recv(1024)
-            CALL = data.decode()
-            CALL = CALL.split(",")
-            if CALL != "close":
+            data = pickle.loads(data)
+            print(data)
+            if data != "close":
                 game = pickle.loads(data)
 
         except Exception as e:
+            print(str(e))
             close()
 
-        built_all()
+        built_all(game)
 
 
 if __name__ == "__main__":
