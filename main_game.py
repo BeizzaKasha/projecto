@@ -183,12 +183,14 @@ def winner(players):
     for player in players:
         if winner.score < player.score:
             winner = player
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render(str(winner.name) + "is the winner!!!", True, (255, 0, 0), (0, 0, 0))
+    font = pygame.font.Font('freesansbold.ttf', 60)
+    text = font.render(str(winner.name) + " is the winner!!!", True, (255, 10, 150), (0, 0, 0))
+    text.set_colorkey((0, 0, 0))
     textRect = text.get_rect()
-    textRect.center = (1000 // 2, 600 // 2)
-    display_surface.blit(text, textRect)# not print!!!!!!!!! to fix!!
+    textRect.center = (550, 300)
+    display_surface.blit(text, textRect)
     print(str(winner.name) + "is the winner!!!")
+
 
 pygame.init()
 
@@ -263,7 +265,6 @@ def main():
 
         leaderboard.bilt()
 
-        pygame.display.flip()
         pygame.time.delay(15)  # 60 frames per second
         game_time -= 1
         print(game_time)
@@ -274,6 +275,8 @@ def main():
         if game_time == -100:
             running = False
             main()
+
+        pygame.display.flip()
 
     sys.exit()
 
