@@ -1,3 +1,5 @@
+import json
+
 import select
 import logging
 import socket
@@ -19,10 +21,10 @@ class Game:
         self.game_time = 500
         self.SCREEN_WIDTH = 1100
         self.SCREEN_HEIGHT = 600
-        """pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
+        pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.display_surface = pygame.display.set_mode((1000, 20))
         pygame.display.set_caption('Show Text')
-        self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))"""
+        self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
 
         self.players = pygame.sprite.Group()
         self.players_list = []
@@ -219,7 +221,7 @@ def newclient(current_socket, client_sockets, players, players_list, game):
 
 def client_mesege(current_socket):
     rsv = current_socket.recv(1024).decode()  # get the client messege, do what ever u want with it--->
-    print(rsv)
+    print("rsv: " + str(rsv))
     return rsv
 
 
@@ -243,11 +245,24 @@ def get_from_clients(rlist, number_of_client, max_clients, players, players_list
             players_movement.append(move)
     return players_movement
 
+class board:
+    def __init__(self, players, enemies, all_sprites, leaderboard):
+        self.players = players
+        self.enemies = enemies
+        self.all_sprites = all_sprites
+        self.leaderboard = leaderboard
 
-def make_messeges(rlist, players, enemies, all_sprites, leaderboard):
+
+def make_messeges(rlist, players, enemies, all_sprites, leaderboard, game):
     for current_socket in rlist:
-        mesege = (players, enemies, all_sprites, leaderboard)
-        bit_mesege = pickle.dumps(mesege)
+        mesege = (players.sprites(), enemies.sprites(), all_sprites.sprites(), leaderboard.__dict__)
+        # mesege = vars(mesege)
+        """bg = game.screen
+        image = game.screen.blit(bg, (0, 0))"""
+        pygame.display.flip()
+        print(game.screen)
+        bit_mesege = pygame.image.tostring(game.screen, "RGB")
+        # print("sending- " + str(bit_mesege))
         messages_to_send.append((current_socket, bit_mesege))
 
 
@@ -271,28 +286,36 @@ def main():
     running = True
 
     while running:
+        # print("round")
         rlist, wlist, xlist = select.select([server_socket] + client_sockets, client_sockets, [])
         player_movement = get_from_clients(rlist, number_of_client, max_clients, game.players, game.players_list, game)
 
         if game.game_time > 0:
-            current_mov = ""
+            # current_mov = ""
+            # print("player list: " + str(game.players_list))
+            i = 0
             for player in game.players_list:
-                game.Player.set_directangleion(player[1])
-                print(player_movement)
-                current_mov = player_movement.index(player[0])
-                val = game.Player.mov(player[1], game.all_sprites, game, player_movement[1 + current_mov])
-                player_movement.remove(player_movement[current_mov + 1])
-                player_movement.remove(player_movement[current_mov])
-                if val != "successful":
-                    game.enemies.add(val)
+                i += 1
+                # print(i)
+                try:
+                    game.Player.set_directangleion(player[1])
+                    print(player_movement)
+                    current_mov = player_movement.index(player[0])
+                    val = game.Player.mov(player[1], game.all_sprites, game, player_movement[1 + current_mov])
+                    player_movement.remove(player_movement[current_mov + 1])
+                    player_movement.remove(player_movement[current_mov])
+                    if val != "successful":
+                        game.enemies.add(val)
+                except:
+                    print("hold up")
 
 
-            """game.enemies.update()
+            game.enemies.update()
 
         for entity in game.all_sprites:
             game.screen.blit(entity.rectangle, entity.rect.topleft)
-
-        game.screen.blit(player.rot_image, player.rot_image_rect.topleft)"""
+        for player in game.players:
+            game.screen.blit(player.rot_image, player.rot_image_rect.topleft)
 
         for bullet in game.enemies:
             pygame.draw.circle(game.screen, (255, 255, 255), (bullet.rot_image_rect.x, bullet.rot_image_rect.y), 5)
@@ -306,7 +329,7 @@ def main():
                 bullet.kill()
                 game.leaderboard.change_places(game.players)
 
-        """game.leaderboard.bilt(game)"""
+        game.leaderboard.bilt(game)
 
         pygame.time.delay(15)  # 60 frames per second
         game.game_time -= 1
@@ -319,8 +342,8 @@ def main():
             running = False
             main()
 
-        """pygame.display.flip()"""
-        make_messeges(rlist, game.players, game.enemies, game.all_sprites, game.leaderboard)
+        pygame.display.flip()
+        make_messeges(rlist, game.players, game.enemies, game.all_sprites, game.leaderboard, game)
 
         for message in messages_to_send:
             current_socket, data = message

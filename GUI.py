@@ -33,10 +33,12 @@ def close():
 
 
 def built_all(game_obj):
-    print(str(game_obj) + "do here built for what need how it is on server")
-    players, enemies, all_sprites, leaderboard = game_obj
+    image = pygame.image.fromstring(game_obj, (1100, 600), "RGB")  # convert received image from string
+    # print(str(game_obj) + " <--do here built for what need how it is on server")
 
-    enemies.update()
+    screen.blit(image, (0, 0))  # "show image" on the screen
+    pygame.display.update()
+    """enemies.update()
 
     for entity in all_sprites:
         screen.blit(entity.rectangle, entity.rect.topleft)
@@ -44,7 +46,7 @@ def built_all(game_obj):
     for player in players:
         screen.blit(player.rot_image, player.rot_image_rect.topleft)
 
-    leaderboard.bilt(game)
+    leaderboard.bilt(game)"""
 
 
 class Demo(pygame.sprite.Sprite):
@@ -257,13 +259,15 @@ def main():
         screen.fill((0, 0, 0))
 
         try:
-            data = my_socket.recv(1024)
-            print(data)
-            if data != "close":
-                game = pickle.loads(data)
+            game = my_socket.recv(240400)
+            # print(game)
+            if game == "close":
+                print("exit")
+                # game = pickle.loads(data)
+                # game = data.decode()
 
         except Exception as e:
-            print(str(e))
+            print(str(e) + " <---error")
             close()
 
         built_all(game)
