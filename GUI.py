@@ -26,6 +26,14 @@ port = 5555
 my_socket.connect((ip, port))
 logging.info("connect to server at {0} with port {1}".format(ip, port))
 
+class Orientation:
+    def __init__(self, x, y, width, height, angle):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.angle = angle
+
 
 def close():
     logging.error("client close")
@@ -33,12 +41,23 @@ def close():
 
 
 def built_all(game_obj):
-    image = pygame.image.fromstring(game_obj, (1100, 600), "RGB")  # convert received image from string
+    # image = pygame.image.fromstring(game_obj, (1100, 600), "RGB")  # convert received image from string
     # print(str(game_obj) + " <--do here built for what need how it is on server")
+    objects = []
+    for obj in game_obj:
+        objects.append(pickle.loads(obj))
+    sprits = []
+    for obj in objects:
+        sprit = Demo_print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
+        print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
+        sprits.append(sprit)
 
-    screen.blit(image, (0, 0))  # "show image" on the screen
+    for sprit in sprits:
+        screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
+
+    """screen.blit(image, (0, 0))  # "show image" on the screen
     pygame.display.update()
-    """enemies.update()
+    enemies.update()
 
     for entity in all_sprites:
         screen.blit(entity.rectangle, entity.rect.topleft)
@@ -47,6 +66,16 @@ def built_all(game_obj):
         screen.blit(player.rot_image, player.rot_image_rect.topleft)
 
     leaderboard.bilt(game)"""
+
+class Demo_print(pygame.sprite.Sprite):
+    def __init__(self, x, y, width, height, angle, color):
+        super(Demo_print, self).__init__()
+        self.rectangle = pygame.Surface((width, height), pygame.SRCALPHA)
+        self.rect = self.rectangle.get_rect()
+        self.rect.move_ip(x, y)
+        self.rectangle.fill(pygame.Color(color))
+        self.rot_image = pygame.transform.rotate(self.rectangle, angle)
+        self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
 
 
 class Demo(pygame.sprite.Sprite):
@@ -190,8 +219,9 @@ def winner(players):
 
 
 def mov():
+    mx, my = pygame.mouse.get_pos()
     mouse = pygame.mouse.get_pressed(3)
-    val = "successful"
+    val = "no input"
     pressed_keys = pygame.key.get_pressed()
     if pressed_keys[K_w]:
         val = 'w'
@@ -204,7 +234,7 @@ def mov():
     if mouse[0]:
         val = "fire"
 
-    return val
+    return val, (mx, my)
 
 
 pygame.init()
@@ -220,7 +250,7 @@ game = ""
 
 def main():
     global game
-    game_time = 500
+    """game_time = 500"""
 
     player = Player()
     players = pygame.sprite.Group()
@@ -255,11 +285,15 @@ def main():
                 running = False
 
         movement = mov()
-        my_socket.send(movement.encode())
-        screen.fill((0, 0, 0))
+        my_socket.send(pickle.dumps(movement))
+        # screen.fill((0, 0, 0))
 
         try:
-            game = my_socket.recv(240400)
+            lenoflen = int(my_socket.recv(4).decode())
+            lenght = int(my_socket.recv(lenoflen).decode())
+            print(str(lenght))
+            game = my_socket.recv(lenght)
+            game = pickle.loads(game)
             # print(game)
             if game == "close":
                 print("exit")
@@ -273,7 +307,7 @@ def main():
         built_all(game)
         pygame.display.flip()
 
-        pygame.time.delay(15)  # 60 frames per second
+        """pygame.time.delay(15)  # 60 frames per second
         game_time -= 1
         print(game_time)
 
@@ -282,7 +316,7 @@ def main():
 
         if game_time == -100:
             running = False
-            main()
+            main()"""
 
         pygame.display.flip()
 
