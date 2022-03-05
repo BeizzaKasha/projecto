@@ -106,6 +106,7 @@ class Game:
                                            'red')
 
         def Serialize(self):
+            print("red")
             return pickle.dumps(self.orientation)
 
         def fire(self, game):
@@ -120,7 +121,7 @@ class Game:
             self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
 
-        def mov(self, walls, game, player_movement):
+        def mov(self, walls, game, player_movement, fire):
             val = "successful"
             if player_movement == 'w' and not self.rect.top - self.rect.height / 3 < 0:
                 self.rect.move_ip(0, -self.speed)
@@ -138,7 +139,7 @@ class Game:
                 self.rect.move_ip(self.speed, 0)
                 if pygame.sprite.spritecollideany(self, walls):
                     self.rect.move_ip(-self.speed, 0)
-            if player_movement == 'fire' and self.fire_wait <= 0:
+            if fire == 'fire' and self.fire_wait <= 0:
                 val = self.fire(game)
                 self.fire_wait = 60
 
@@ -246,8 +247,10 @@ def newclient(current_socket, client_sockets, players, players_list, game):
     client_sockets.append(connection)
     print_client_sockets(client_sockets)
     player = Game.Player()
-    players.add(player)
-    players_list.append((current_socket, player))
+    # players.add(player)
+    # players_list.append((current_socket, player))
+    players_conection[player] = connection
+    players_conection[connection] = player
 
     player.rect.center = game.teleport(game.all_sprites)
 
@@ -266,26 +269,27 @@ def client_mesege(current_socket):
 def get_from_clients(rlist, number_of_client, max_clients, players, players_list, game):
     players_movement = []
     for current_socket in rlist:
-        players_movement.append(current_socket)
+        # players_movement.append(current_socket)
         if current_socket is server_socket:  # new client joins
             if max_clients - number_of_client > 0:
                 newclient(current_socket, client_sockets, players, players_list, game)  # create new client
                 number_of_client += 1
-                players_movement.append("new guy")
+                # players_movement.append("new guy")
                 print("players left to join: " + str(max_clients - number_of_client))
             else:
                 connection, client_address = current_socket.accept()
                 connection.send("cant connect".encode())
                 connection.shutdown(socket.SHUT_RDWR)
                 connection.close()
-                players_movement.append("guy left")
+                # players_movement.append("guy left")
         else:  # what to do with client
             move = client_mesege(current_socket)
             players_movement.append(move)
+            players_conection[move] = current_socket
     return players_movement
 
 
-def make_messeges(rlist, players, enemies, all_sprites, leaderboard, game):
+def make_messeges(rlist, players, enemies, all_sprites):
     for current_socket in rlist:
         bit_mesege = []
         for player in players:
@@ -306,6 +310,7 @@ client_sockets = []
 messages_to_send = []
 number_of_client = 0
 max_clients = 2
+players_conection = {}
 
 
 # place for parameters
@@ -323,22 +328,22 @@ def main():
         if game.game_time > 0:
             # current_mov = ""
             # print("player list: " + str(game.players_list))
-            for player in game.players_list:
-                try:
-                    # print(player_movement)
-                    current_mov = player_movement.index(player[0])
-                    look = player_movement[current_mov + 1][0]
-                    move = player_movement[current_mov + 1][1]
-                    print(look, move)
-                    game.Player.set_directangleion(player[1], look)
-                    val = game.Player.mov(player[1], game.all_sprites, game, move)
-                    player_movement.remove(player_movement[current_mov + 1])
-                    player_movement.remove(player_movement[current_mov])
-                    if val != "successful":
-                        game.enemies.add(val)
-                except Exception as e:
+            for movement in player_movement:
+                # try:
+                print(players_conection)
+                current_sucket = players_conection.pop(movement)
+                current_player = players_conection[current_sucket]
+                look = movement[2]
+                fire = movement[1]
+                move = movement[0]
+                print(look, move)
+                game.Player.set_directangleion(current_player, look)
+                val = game.Player.mov(current_player, game.all_sprites, game, move, fire)
+                if val != "successful":
+                    game.enemies.add(val)
+                """except Exception as e:
                     # i = 1
-                    print(str(e) + " <---error")
+                    print(str(e) + " <---error")"""
 
             """ game.enemies.update()
 
@@ -362,7 +367,7 @@ def main():
         # game.leaderboard.bilt(game)
 
         pygame.time.delay(15)  # 60 frames per second
-        game.game_time -= 1
+        """game.game_time -= 1"""
         # print(game.game_time)
 
         if game.game_time < 0:
@@ -374,7 +379,7 @@ def main():
             main()
 
         # pygame.display.flip()
-        make_messeges(rlist, game.players, game.enemies, game.all_sprites, game.leaderboard, game)
+        make_messeges(rlist, game.players, game.enemies, game.all_sprites)
 
         for message in messages_to_send:
             current_socket, data = message

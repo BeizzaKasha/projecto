@@ -51,6 +51,7 @@ def built_all(game_obj):
         sprit = Demo_print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
         print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
         sprits.append(sprit)
+    print("///////////////////////////////////////////////////")
 
     for sprit in sprits:
         screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
@@ -221,20 +222,21 @@ def winner(players):
 def mov():
     mx, my = pygame.mouse.get_pos()
     mouse = pygame.mouse.get_pressed(3)
-    val = "no input"
+    move = "no input"
+    val = 'no input'
     pressed_keys = pygame.key.get_pressed()
     if pressed_keys[K_w]:
-        val = 'w'
+        move = 'w'
     if pressed_keys[K_s]:
-        val = 's'
+        move = 's'
     if pressed_keys[K_a]:
-        val = 'a'
+        move = 'a'
     if pressed_keys[K_d]:
-        val = 'd'
+        move = 'd'
     if mouse[0]:
         val = "fire"
 
-    return val, (mx, my)
+    return move, val, (mx, my)
 
 
 pygame.init()
