@@ -1,5 +1,3 @@
-import json
-
 import select
 import logging
 import socket
@@ -67,9 +65,11 @@ class Game:
             self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.angle,
                                            'white')
 
-        def update(self):
+        def mov(self):
             self.rect.move_ip(math.cos(self.angle) * self.bullet_speed, math.sin(self.angle) * -self.bullet_speed)
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
+            self.orientation.x = self.rect.x
+            self.orientation.y = self.rect.y
 
         def Serialize(self):
             return pickle.dumps(self.orientation)
@@ -106,7 +106,6 @@ class Game:
                                            'red')
 
         def Serialize(self):
-            print("red")
             return pickle.dumps(self.orientation)
 
         def fire(self, game):
@@ -145,6 +144,10 @@ class Game:
 
             if self.fire_wait > 0:
                 self.fire_wait -= self.firing_speed
+
+            self.orientation.x = self.rect.x
+            self.orientation.y = self.rect.y
+            self.orientation.angle = self.angle
             return val
 
     class Walls(pygame.sprite.Sprite):
@@ -247,7 +250,7 @@ def newclient(current_socket, client_sockets, players, players_list, game):
     client_sockets.append(connection)
     print_client_sockets(client_sockets)
     player = Game.Player()
-    # players.add(player)
+    players.add(player)
     # players_list.append((current_socket, player))
     players_conection[player] = connection
     players_conection[connection] = player
@@ -256,13 +259,13 @@ def newclient(current_socket, client_sockets, players, players_list, game):
 
 
 def client_mesege(current_socket):
-    rsv = "null"
     try:
         rsv = current_socket.recv(1024)  # get the client messege, do what ever u want with it--->
         rsv = pickle.loads(rsv)
         # print("rsv: " + str(rsv))
     except:
         print("a problem accrued")
+        rsv = "socket quit"
     return rsv
 
 
@@ -279,13 +282,16 @@ def get_from_clients(rlist, number_of_client, max_clients, players, players_list
             else:
                 connection, client_address = current_socket.accept()
                 connection.send("cant connect".encode())
-                connection.shutdown(socket.SHUT_RDWR)
-                connection.close()
+                player_quit(client_sockets, current_socket)
                 # players_movement.append("guy left")
         else:  # what to do with client
             move = client_mesege(current_socket)
-            players_movement.append(move)
-            players_conection[move] = current_socket
+            # print(move)
+            if move != "socket quit":
+                players_movement.append(move)
+                players_conection[move] = current_socket
+            else:
+                player_quit(client_sockets, current_socket)
     return players_movement
 
 
@@ -299,6 +305,13 @@ def make_messeges(rlist, players, enemies, all_sprites):
         for wall in all_sprites:
             bit_mesege.append(wall.Serialize())
         messages_to_send.append((current_socket, pickle.dumps(bit_mesege)))
+
+
+def player_quit(client_sockets, current_socket):
+    print(str(current_socket) + " left")
+    current_socket.shutdown(socket.SHUT_RDWR)
+    current_socket.close()
+    client_sockets.remove(current_socket)
 
 
 logging.debug("Setting up server...")
@@ -322,7 +335,7 @@ def main():
     running = True
 
     while running:
-        rlist, wlist, xlist = select.select([server_socket] + client_sockets, client_sockets, [])
+        rlist, wlist, xlist = select.select([server_socket] + client_sockets, [], [])
         player_movement = get_from_clients(rlist, number_of_client, max_clients, game.players, game.players_list, game)
 
         if game.game_time > 0:
@@ -330,13 +343,13 @@ def main():
             # print("player list: " + str(game.players_list))
             for movement in player_movement:
                 # try:
-                print(players_conection)
+                # print(players_conection)
                 current_sucket = players_conection.pop(movement)
                 current_player = players_conection[current_sucket]
                 look = movement[2]
                 fire = movement[1]
                 move = movement[0]
-                print(look, move)
+                # print(look, move)
                 game.Player.set_directangleion(current_player, look)
                 val = game.Player.mov(current_player, game.all_sprites, game, move, fire)
                 if val != "successful":
@@ -344,8 +357,7 @@ def main():
                 """except Exception as e:
                     # i = 1
                     print(str(e) + " <---error")"""
-
-            """ game.enemies.update()
+            """game.enemies.update()
 
         for entity in game.all_sprites:
             game.screen.blit(entity.rectangle, entity.rect.topleft)
@@ -353,7 +365,7 @@ def main():
             game.screen.blit(player.rot_image, player.rot_image_rect.topleft)"""
 
         for bullet in game.enemies:
-            # pygame.draw.circle(game.screen, (255, 255, 255), (bullet.rot_image_rect.x, bullet.rot_image_rect.y), 5)
+            bullet.mov()
             if pygame.sprite.spritecollideany(bullet, game.all_sprites):
                 bullet.kill()
             elif pygame.sprite.spritecollideany(bullet, game.players):

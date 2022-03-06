@@ -26,14 +26,6 @@ port = 5555
 my_socket.connect((ip, port))
 logging.info("connect to server at {0} with port {1}".format(ip, port))
 
-class Orientation:
-    def __init__(self, x, y, width, height, angle):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.angle = angle
-
 
 def close():
     logging.error("client close")
@@ -41,7 +33,6 @@ def close():
 
 
 def built_all(game_obj):
-    # image = pygame.image.fromstring(game_obj, (1100, 600), "RGB")  # convert received image from string
     # print(str(game_obj) + " <--do here built for what need how it is on server")
     objects = []
     for obj in game_obj:
@@ -49,24 +40,21 @@ def built_all(game_obj):
     sprits = []
     for obj in objects:
         sprit = Demo_print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
-        print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
+        # print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
         sprits.append(sprit)
-    print("///////////////////////////////////////////////////")
+    # print("///////////////////////////////////////////////////")
 
     for sprit in sprits:
         screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
 
-    """screen.blit(image, (0, 0))  # "show image" on the screen
-    pygame.display.update()
-    enemies.update()
+    class Orientation:
+        def __init__(self, x, y, width, height, angle):
+            self.x = x
+            self.y = y
+            self.width = width
+            self.height = height
+            self.angle = angle
 
-    for entity in all_sprites:
-        screen.blit(entity.rectangle, entity.rect.topleft)
-
-    for player in players:
-        screen.blit(player.rot_image, player.rot_image_rect.topleft)
-
-    leaderboard.bilt(game)"""
 
 class Demo_print(pygame.sprite.Sprite):
     def __init__(self, x, y, width, height, angle, color):
@@ -79,7 +67,7 @@ class Demo_print(pygame.sprite.Sprite):
         self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
 
 
-class Demo(pygame.sprite.Sprite):
+"""class Demo(pygame.sprite.Sprite):
     def __init__(self):
         super(Demo, self).__init__()
         self.rectangle = pygame.Surface((24, 24), pygame.SRCALPHA)
@@ -217,6 +205,7 @@ def winner(players):
     textRect.center = (550, 300)
     display_surface.blit(text, textRect)
     print(str(winner.name) + "is the winner!!!")
+"""
 
 
 def mov():
@@ -254,11 +243,11 @@ def main():
     global game
     """game_time = 500"""
 
-    player = Player()
+    """player = Player()
     players = pygame.sprite.Group()
     players.add(player)
 
-    enemies = pygame.sprite.Group()
+    # enemies = pygame.sprite.Group()
     all_sprites = pygame.sprite.Group()
 
     for i in range(random.randint(10, 15)):
@@ -269,9 +258,9 @@ def main():
     leaderboard.change_places(players)
     bord, line = leaderboard.set_place()
     all_sprites.add(bord)
-    all_sprites.add(line)
+    all_sprites.add(line)"""
 
-    player.rect.center = teleport(all_sprites)
+    # player.rect.center = teleport(all_sprites)
 
     running = True
 
@@ -279,16 +268,20 @@ def main():
         for event in pygame.event.get():
             if event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
+                    my_socket.send(pickle.dumps("quit"))
                     running = False
+                    continue
                 """if event.key == pygame.locals.K_q:  # cheat move
                     running = False
                     main()"""
             elif event.type == QUIT:
                 running = False
+                my_socket.send(pickle.dumps("quit"))
+                continue
 
         movement = mov()
         my_socket.send(pickle.dumps(movement))
-        # screen.fill((0, 0, 0))
+        screen.fill((0, 0, 0))
 
         try:
             lenoflen = int(my_socket.recv(4).decode())
@@ -299,8 +292,6 @@ def main():
             # print(game)
             if game == "close":
                 print("exit")
-                # game = pickle.loads(data)
-                # game = data.decode()
 
         except Exception as e:
             print(str(e) + " <---error")
