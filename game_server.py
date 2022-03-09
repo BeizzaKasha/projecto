@@ -264,15 +264,14 @@ def client_mesege(current_socket):
         rsv = pickle.loads(rsv)
         # print("rsv: " + str(rsv))
     except:
-        print("a problem accrued")
-        rsv = "socket quit"
+        logging.error("problem with resiving a message: " + str(current_socket))
+        rsv = "quit"
     return rsv
 
 
 def get_from_clients(rlist, number_of_client, max_clients, players, players_list, game):
     players_movement = []
     for current_socket in rlist:
-        # players_movement.append(current_socket)
         if current_socket is server_socket:  # new client joins
             if max_clients - number_of_client > 0:
                 newclient(current_socket, client_sockets, players, players_list, game)  # create new client
@@ -282,16 +281,14 @@ def get_from_clients(rlist, number_of_client, max_clients, players, players_list
             else:
                 connection, client_address = current_socket.accept()
                 connection.send("cant connect".encode())
-                player_quit(client_sockets, current_socket)
-                # players_movement.append("guy left")
+                player_quit(client_sockets, current_socket, players)
         else:  # what to do with client
             move = client_mesege(current_socket)
-            # print(move)
-            if move != "socket quit":
+            if move != "quit":
                 players_movement.append(move)
                 players_conection[move] = current_socket
             else:
-                player_quit(client_sockets, current_socket)
+                player_quit(client_sockets, current_socket, players)
     return players_movement
 
 
@@ -307,8 +304,9 @@ def make_messeges(rlist, players, enemies, all_sprites):
         messages_to_send.append((current_socket, pickle.dumps(bit_mesege)))
 
 
-def player_quit(client_sockets, current_socket):
+def player_quit(client_sockets, current_socket, players):
     print(str(current_socket) + " left")
+    players.remove(players_conection[current_socket])
     current_socket.shutdown(socket.SHUT_RDWR)
     current_socket.close()
     client_sockets.remove(current_socket)
@@ -335,38 +333,30 @@ def main():
     running = True
 
     while running:
-        rlist, wlist, xlist = select.select([server_socket] + client_sockets, [], [])
+        rlist, wlist, xlist = select.select([server_socket] + client_sockets, client_sockets, [])
         player_movement = get_from_clients(rlist, number_of_client, max_clients, game.players, game.players_list, game)
 
         if game.game_time > 0:
-            # current_mov = ""
-            # print("player list: " + str(game.players_list))
             for movement in player_movement:
-                # try:
-                # print(players_conection)
-                current_sucket = players_conection.pop(movement)
-                current_player = players_conection[current_sucket]
-                look = movement[2]
-                fire = movement[1]
-                move = movement[0]
-                # print(look, move)
-                game.Player.set_directangleion(current_player, look)
-                val = game.Player.mov(current_player, game.all_sprites, game, move, fire)
-                if val != "successful":
-                    game.enemies.add(val)
-                """except Exception as e:
+                try:
+                    current_sucket = players_conection.pop(movement)
+                    current_player = players_conection[current_sucket]
+                    look = movement[2]
+                    fire = movement[1]
+                    move = movement[0]
+                    # print(look, move)
+                    game.Player.set_directangleion(current_player, look)
+                    val = game.Player.mov(current_player, game.all_sprites, game, move, fire)
+                    if val != "successful":
+                        game.enemies.add(val)
+                except Exception as e:
                     # i = 1
-                    print(str(e) + " <---error")"""
-            """game.enemies.update()
-
-        for entity in game.all_sprites:
-            game.screen.blit(entity.rectangle, entity.rect.topleft)
-        for player in game.players:
-            game.screen.blit(player.rot_image, player.rot_image_rect.topleft)"""
+                    print(str(e) + " <---error")
 
         for bullet in game.enemies:
             bullet.mov()
-            if pygame.sprite.spritecollideany(bullet, game.all_sprites):
+            if pygame.sprite.spritecollideany(bullet, game.all_sprites) or 1000 < bullet.rect.x or bullet.rect.x < 0 or 800 < bullet.rect.y or bullet.rect.y < 0:
+                # print("kill " + str(bullet))
                 bullet.kill()
             elif pygame.sprite.spritecollideany(bullet, game.players):
                 for player in game.players:
@@ -380,7 +370,6 @@ def main():
 
         pygame.time.delay(15)  # 60 frames per second
         """game.game_time -= 1"""
-        # print(game.game_time)
 
         if game.game_time < 0:
             # game.winner(game.players)
@@ -396,9 +385,11 @@ def main():
         for message in messages_to_send:
             current_socket, data = message
             if current_socket in wlist:
-                # print(str(len(str(len(data)))).zfill(4) + "    " + str(len(data)))
-                current_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
-                messages_to_send.remove(message)
+                try:
+                    current_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
+                    messages_to_send.remove(message)
+                except Exception as e:
+                    logging.error("problem with sending a message: " + str(current_socket))
 
     sys.exit()
 
