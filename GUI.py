@@ -35,30 +35,36 @@ def close():
 def built_all(game_obj):
     # print(str(game_obj) + " <--do here built for what need how it is on server")
     objects = []
+    # print(game_obj[-1])
     for obj in game_obj:
         objects.append(pickle.loads(obj))
     sprits = []
     for obj in objects:
-        sprit = Demo_print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
+        sprit = Demo_print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color, obj.name)
         # print(obj.x, obj.y, obj.width, obj.height, obj.angle, obj.color)
         sprits.append(sprit)
     # print("///////////////////////////////////////////////////")
 
     for sprit in sprits:
-        screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
+        if sprit.name == "":
+            screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
+        else:
+            screen.blit(sprit.text, sprit.rect)
 
 
 class Orientation:
-    def __init__(self, x, y, width, height, angle):
+    def __init__(self, x, y, width, height, angle, color, name):  # put name and do it print txt if needed!!!!
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.angle = angle
+        self.name = name
+        self.color = color
 
 
 class Demo_print(pygame.sprite.Sprite):
-    def __init__(self, x, y, width, height, angle, color):
+    def __init__(self, x, y, width, height, angle, color, name):
         super(Demo_print, self).__init__()
         self.rectangle = pygame.Surface((width, height), pygame.SRCALPHA)
         self.rect = self.rectangle.get_rect()
@@ -66,6 +72,9 @@ class Demo_print(pygame.sprite.Sprite):
         self.rectangle.fill(pygame.Color(color))
         self.rot_image = pygame.transform.rotate(self.rectangle, angle)
         self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
+        self.name = name
+        self.font = pygame.font.Font('freesansbold.ttf', 32)
+        self.text = self.font.render(self.name, True, color, (0, 0, 0))
 
 
 def mov():
@@ -86,6 +95,39 @@ def mov():
         val = "fire"
 
     return move, val, (mx, my)
+
+
+class LeaderBoard:
+    def __init__(self):
+
+        # self.bord = self.block((800, 0), (200, 600), 'black')
+        # self.line = self.block((800, 0), (8, 600), 'gray')
+
+        self.txts = []
+
+        self.font = pygame.font.Font('freesansbold.ttf', 32)
+        text = self.font.render('leaderboard', True, (255, 0, 0), (0, 0, 0))
+        textRect = text.get_rect()
+        textRect.center = (300 // 2 + 800, 10)
+        self.txts.append((text, textRect))
+
+    """def set_place(self):
+        place = [self.bord, self.line]
+        return place"""
+
+    def change_places(self, players):
+        leader_place = 50
+        for player in players:
+            text = self.font.render(str(player.name) + "           " + str(player.score), True, (255, 0, 0),
+                                    (0, 0, 0))
+            textRect = text.get_rect()
+            textRect.center = (300 // 2 + 800, leader_place)
+            self.txts.append((text, textRect))
+            leader_place += 50
+
+    def bilt(self, game):
+        for text in self.txts:
+            game.display_surface.blit(text[0], text[1])
 
 
 pygame.init()

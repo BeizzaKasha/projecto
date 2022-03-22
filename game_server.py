@@ -63,7 +63,7 @@ class Game:
             self.bullet_speed = 10
 
             self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.angle,
-                                           'white')
+                                           'white', "")
 
         def mov(self):
             self.rect.move_ip(math.cos(self.angle) * self.bullet_speed, math.sin(self.angle) * -self.bullet_speed)
@@ -103,7 +103,7 @@ class Game:
             self.name = str(random.randint(1, 20))
             self.score = 0
             self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.angle,
-                                           'red')
+                                           'red', "")
 
         def Serialize(self):
             return pickle.dumps(self.orientation)
@@ -163,7 +163,7 @@ class Game:
             self.rectangle = pygame.transform.rotate(self.rectangle, self.angle)
             self.rect = self.rectangle.get_rect(center=self.rect.center)
             self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.angle,
-                                           'gray')
+                                           'gray', "")
 
         def Serialize(self):
             return pickle.dumps(self.orientation)
@@ -171,46 +171,55 @@ class Game:
     class LeaderBoard:
         def __init__(self):
 
-            self.bord = self.block((800, 0), (200, 600), 'black')
-            self.line = self.block((800, 0), (8, 600), 'gray')
+            self.bord = self.Block((800, 0), (200, 600), 'red')
+            self.line = self.Block((800, 0), (8, 600), 'blue')
 
             self.txts = []
 
             self.font = pygame.font.Font('freesansbold.ttf', 32)
-            text = self.font.render('leaderboard', True, (255, 0, 0), (0, 0, 0))
-            textRect = text.get_rect()
-            textRect.center = (300 // 2 + 800, 10)
-            self.txts.append((text, textRect))
 
         def set_place(self):
             place = [self.bord, self.line]
             return place
 
         def change_places(self, players):
+            self.txts.clear()
+
+            text = self.font.render('leaderboard', True, (255, 0, 0), (0, 0, 0))
+            text_name = "leaderboard"
+            textRect = text.get_rect()
+            textRect.center = (300 // 2 + 800, 10)
+            self.txts.append((text_name, textRect))
+
             leader_place = 50
             for player in players:
                 text = self.font.render(str(player.name) + "           " + str(player.score), True, (255, 0, 0),
                                         (0, 0, 0))
+                text_name = str(player.name) + "           " + str(player.score)
                 textRect = text.get_rect()
                 textRect.center = (300 // 2 + 800, leader_place)
-                self.txts.append((text, textRect))
+                self.txts.append((text_name, textRect))
                 leader_place += 50
 
         def bilt(self, game):
             for text in self.txts:
                 game.display_surface.blit(text[0], text[1])
 
-        class block(pygame.sprite.Sprite):
+        def Serialize(self, num):
+            orientation = Orientation(self.txts[num][1].x, self.txts[num][1].y, self.txts[num][1].width,
+                                      self.txts[num][1].height, 0, 'white', self.txts[num][0])
+            return pickle.dumps(orientation)
+
+        class Block(pygame.sprite.Sprite):
             def __init__(self, size, place, color):
-                super(Game.LeaderBoard.block, self).__init__()
-                # self.bord = pygame.sprite.Sprite()
+                super(Game.LeaderBoard.Block, self).__init__()
                 self.rectangle = pygame.Surface(size, pygame.SRCALPHA)
                 self.rectangle.fill(pygame.Color(color))
                 self.rect = self.rectangle.get_rect()
                 self.rect = self.rectangle.get_rect()
                 self.rect.move_ip(place)
                 self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width,
-                                               self.rect.height, 0, color)
+                                               self.rect.height, 0, color, "")
 
             def Serialize(self):
                 return pickle.dumps(self.orientation)
@@ -230,13 +239,14 @@ class Game:
 
 
 class Orientation:
-    def __init__(self, x, y, width, height, angle, color):
+    def __init__(self, x, y, width, height, angle, color, name):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.angle = angle
         self.color = color
+        self.name = name
 
 
 def print_client_sockets(client_sockets):
@@ -271,6 +281,7 @@ def client_mesege(current_socket):
 
 def get_from_clients(rlist, number_of_client, max_clients, players, players_list, game):
     players_movement = []
+    mov_makers = []
     for current_socket in rlist:
         if current_socket is server_socket:  # new client joins
             if max_clients - number_of_client > 0:
@@ -287,12 +298,13 @@ def get_from_clients(rlist, number_of_client, max_clients, players, players_list
             if move != "quit":
                 players_movement.append(move)
                 players_conection[move] = current_socket
+                mov_makers.append(current_socket)
             else:
                 player_quit(client_sockets, current_socket, players)
-    return players_movement
+    return players_movement, mov_makers
 
 
-def make_messeges(rlist, players, enemies, all_sprites):
+def make_messeges(rlist, players, enemies, all_sprites, LeaderBoard):
     for current_socket in rlist:
         bit_mesege = []
         for player in players:
@@ -301,6 +313,8 @@ def make_messeges(rlist, players, enemies, all_sprites):
             bit_mesege.append(bullet.Serialize())
         for wall in all_sprites:
             bit_mesege.append(wall.Serialize())
+        for i in range(len(LeaderBoard.txts)):
+            bit_mesege.append(LeaderBoard.Serialize(i))
         messages_to_send.append((current_socket, pickle.dumps(bit_mesege)))
 
 
@@ -333,8 +347,9 @@ def main():
     running = True
 
     while running:
-        rlist, wlist, xlist = select.select([server_socket] + client_sockets, client_sockets, [])
-        player_movement = get_from_clients(rlist, number_of_client, max_clients, game.players, game.players_list, game)
+        rlist, wlist, xlist = select.select([server_socket] + client_sockets, [], [])
+        player_movement, mov_makers = get_from_clients(rlist, number_of_client, max_clients, game.players,
+                                                       game.players_list, game)
 
         if game.game_time > 0:
             for movement in player_movement:
@@ -353,18 +368,24 @@ def main():
                     # i = 1
                     print(str(e) + " <---error")
 
+        hit = pygame.sprite.Group()
         for bullet in game.enemies:
             bullet.mov()
-            if pygame.sprite.spritecollideany(bullet, game.all_sprites) or 1000 < bullet.rect.x or bullet.rect.x < 0 or 800 < bullet.rect.y or bullet.rect.y < 0:
-                # print("kill " + str(bullet))
+            if pygame.sprite.spritecollideany(bullet,
+                                              game.all_sprites) or 1000 < bullet.rect.x or bullet.rect.x < 0 or 800 < bullet.rect.y or bullet.rect.y < 0:
                 bullet.kill()
             elif pygame.sprite.spritecollideany(bullet, game.players):
-                for player in game.players:
-                    if bullet.owner == player:
-                        player.score += 1
-                        player.rect.center = game.teleport(game.all_sprites)
-                bullet.kill()
+                bullet.owner.score += 1
+                hit.add(bullet)
                 game.leaderboard.change_places(game.players)
+
+        for player in game.players:
+            if pygame.sprite.spritecollideany(player, hit):
+                player.rect.center = game.teleport(game.all_sprites)
+
+        for bullet in hit:
+            bullet.kill()
+        del hit
 
         # game.leaderboard.bilt(game)
 
@@ -372,7 +393,7 @@ def main():
         """game.game_time -= 1"""
 
         if game.game_time < 0:
-            # game.winner(game.players)
+            game.winner(game.players)
             print("time's over")
 
         if game.game_time == -100:
@@ -380,16 +401,16 @@ def main():
             main()
 
         # pygame.display.flip()
-        make_messeges(rlist, game.players, game.enemies, game.all_sprites)
+        make_messeges(mov_makers, game.players, game.enemies, game.all_sprites, game.leaderboard)
 
         for message in messages_to_send:
             current_socket, data = message
-            if current_socket in wlist:
-                try:
-                    current_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
-                    messages_to_send.remove(message)
-                except Exception as e:
-                    logging.error("problem with sending a message: " + str(current_socket))
+            # if current_socket in wlist:
+            try:
+                current_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
+                messages_to_send.remove(message)
+            except Exception as e:
+                logging.error("problem with sending a message: " + str(current_socket))
 
     sys.exit()
 
