@@ -2,11 +2,9 @@ import logging
 import pickle
 import socket
 
-import math
 import sys
 
 import pygame
-import random
 from pygame.locals import (
     K_w,
     K_s,
@@ -18,7 +16,7 @@ from pygame.locals import (
 )
 
 
-class ClientSide():
+class ClientSide:
     def __init__(self):
         logging.debug("client begin")
         self.my_socket = socket.socket()
@@ -45,11 +43,11 @@ class ClientSide():
                     if event.key == K_ESCAPE:
                         self.my_socket.send(pickle.dumps("quit"))
                         running = False
-                        close()
+                        self.close(True)
                 elif event.type == QUIT:
                     running = False
                     self.my_socket.send(pickle.dumps("quit"))
-                    close()
+                    self.close(True)
 
             movement = self.mov()
             self.my_socket.send(pickle.dumps(movement))
@@ -61,14 +59,13 @@ class ClientSide():
                 print(str(lenght))
                 self.game = self.my_socket.recv(lenght)
                 self.game = pickle.loads(self.game)
-                # print(game)
                 if self.game == "close":
                     print("exit")
-                    close()
+                    self.close(False)
 
             except Exception as e:
                 print(str(e) + " <---error")
-                close()
+                self.close(True)
 
             self.built_all(self.game)
             pygame.display.flip()
@@ -121,10 +118,12 @@ class ClientSide():
 
         return move, val, (mx, my)
 
-
-def close():
-    logging.error("client close")
-    sys.exit()
+    def close(self, cause):
+        if cause:
+            logging.debug("client close, client side")
+        else:
+            logging.debug("client close, server side")
+        sys.exit()
 
 
 class LeaderBoard:
@@ -149,7 +148,7 @@ class LeaderBoard:
 
 
 class Orientation:
-    def __init__(self, x, y, width, height, angle, color, name):  # put name and do it print txt if needed!!!!
+    def __init__(self, x, y, width, height, angle, color, name):
         self.x = x
         self.y = y
         self.width = width

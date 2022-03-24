@@ -162,7 +162,7 @@ class server:
                 self.game.leaderboard.winner(self.game.players)
                 # print("time's over")
 
-            if self.game.game_time == -200:
+            if self.game.game_time == -100:
                 running = False
 
             self.sending(mov_makers)
@@ -195,6 +195,23 @@ class Game:
             self.rectangle = pygame.Surface((24, 24), pygame.SRCALPHA)
             self.rect = self.rectangle.get_rect()
 
+    def restart(self):
+        self.game_time = 500
+        self.all_sprites.empty()
+        self.enemies.empty()
+        for i in range(random.randint(10, 15)):
+            wall = Game.Walls()
+            self.all_sprites.add(wall)
+
+        self.leaderboard = Game.LeaderBoard()
+        self.leaderboard.change_places(self.players)
+        bord, line = self.leaderboard.set_place()
+        self.all_sprites.add(bord)
+        self.all_sprites.add(line)
+
+        for player in self.players:
+            player.rect.center = self.teleport(self.all_sprites)
+
     class Enemy(pygame.sprite.Sprite):
         def __init__(self, player):
             super(Game.Enemy, self).__init__()
@@ -202,14 +219,16 @@ class Game:
             self.rectangle.fill(pygame.Color('white'))
             self.rect = self.rectangle.get_rect()
 
-            self.angle = (player.angle + 90) * math.pi / 180
-            self.rect.move_ip(int(player.rect.centerx + 28 * math.cos(self.angle)),
-                              int(player.rect.centery - 28 * math.sin(self.angle)))
+            self.angle = math.radians(player.angle - 90)
+            self.rect.center = (int(player.rect.centerx + 10 * math.cos(self.angle)),
+                                int(player.rect.centery - 10 * math.sin(self.angle)))
+            # ^^^in case I make bullet not move:
+            # bullet will hit the shooter, because I usually move the bullet before checking for coalition!
             self.rot_image = self.rectangle
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
 
             self.owner = player
-            self.bullet_speed = 12
+            self.bullet_speed = 14
 
             self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.angle,
                                            'white', "")
@@ -234,23 +253,6 @@ class Game:
         demo.kill()
         return new_center
 
-    def restart(self):
-        self.game_time = 500
-        self.all_sprites.empty()
-        self.enemies.empty()
-        for i in range(random.randint(10, 15)):
-            wall = Game.Walls()
-            self.all_sprites.add(wall)
-
-        self.leaderboard = Game.LeaderBoard()
-        self.leaderboard.change_places(self.players)
-        bord, line = self.leaderboard.set_place()
-        self.all_sprites.add(bord)
-        self.all_sprites.add(line)
-
-        for player in self.players:
-            player.rect.center = self.teleport(self.all_sprites)
-
     class Player(pygame.sprite.Sprite):
         def __init__(self):
             super(Game.Player, self).__init__()
@@ -263,7 +265,7 @@ class Game:
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
             self.angle = 0
             self.speed = 8
-            self.firing_speed = 15
+            self.firing_speed = 6
             self.fire_wait = 120
             self.t_wait = 120
             self.name = str(random.randint(1, 20))
@@ -281,7 +283,7 @@ class Game:
         def set_directangleion(self, look):
             mx, my = look
             dx, dy = mx - self.rect.centerx, my - self.rect.centery
-            self.angle = math.degrees(math.atan2(-dy, dx)) - 90
+            self.angle = math.degrees(math.atan2(-dy, dx)) + 90
 
             self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
