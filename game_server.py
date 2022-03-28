@@ -54,7 +54,6 @@ class server:
 
     def get_from_clients(self, rlist, players):
         players_movement = []
-        mov_makers = []
         for current_socket in rlist:
             if current_socket is self.server_socket:  # new client joins
                 if self.max_clients - self.number_of_client > 0:
@@ -70,10 +69,10 @@ class server:
                 if move == "quit":
                     self.player_quit(self.client_sockets, current_socket, players)
                 else:
-                    players_movement.append(move)
+                    players_movement.append((move, current_socket))
                     self.players_conection[move] = current_socket
-                    mov_makers.append(current_socket)
-        return players_movement, mov_makers
+                    # mov_makers.append(current_socket)
+        return players_movement
 
     def make_messeges(self, rlist, players, enemies, all_sprites, LeaderBoard):
         for current_socket in rlist:
@@ -86,7 +85,7 @@ class server:
                 bit_mesege.append(wall.Serialize())
             for i in range(len(LeaderBoard.txts)):
                 bit_mesege.append(LeaderBoard.Serialize(i))
-            self.messages_to_send.append((current_socket, pickle.dumps(bit_mesege)))
+            self.messages_to_send.append((current_socket[1], pickle.dumps(bit_mesege)))
 
     def player_quit(self, client_sockets, current_socket, players):
         print(str(current_socket) + " left")
@@ -133,16 +132,17 @@ class server:
 
         while running:
             rlist, wlist, xlist = select.select([self.server_socket] + self.client_sockets, [], [])
-            player_movement, mov_makers = self.get_from_clients(rlist, self.game.players)
+            player_movement = self.get_from_clients(rlist, self.game.players)
 
             if self.game.game_time > 0:
                 for movement in player_movement:
                     try:
-                        current_sucket = self.players_conection.pop(movement)
+                        current_sucket = movement[1]
+                        the_move = movement[0]
                         current_player = self.players_conection[current_sucket]
-                        look = movement[2]
-                        fire = movement[1]
-                        move = movement[0]
+                        look = the_move[2]
+                        fire = the_move[1]
+                        move = the_move[0]
                         self.game.Player.set_directangleion(current_player, look)
                         val = self.game.Player.mov(current_player, self.game.all_sprites, move, fire)
                         if val != "successful":
@@ -162,7 +162,7 @@ class server:
             if self.game.game_time == -100:
                 running = False
 
-            self.sending(mov_makers)
+            self.sending(player_movement)
 
 
 class Game:
