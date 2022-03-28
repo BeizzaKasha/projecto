@@ -2,7 +2,6 @@ import select
 import logging
 import socket
 import pickle
-import sys
 
 import pygame
 import random
@@ -31,15 +30,15 @@ class server:
         for i in range(len(client_sockets)):
             logging.debug(client_sockets[i])
 
-    def newclient(self, me, current_socket, client_sockets, players):
+    def newclient(self, current_socket, client_sockets, players):
         connection, client_address = current_socket.accept()
         logging.info("New client joined!")
         client_sockets.append(connection)
         self.print_client_sockets(client_sockets)
         player = Game.Player()
         players.add(player)
-        me.players_conection[player] = connection
-        me.players_conection[connection] = player
+        self.players_conection[player] = connection
+        self.players_conection[connection] = player
 
         player.rect.center = self.game.teleport(self.game.all_sprites)
         self.game.leaderboard.change_places(self.game.players)
@@ -59,7 +58,7 @@ class server:
         for current_socket in rlist:
             if current_socket is self.server_socket:  # new client joins
                 if self.max_clients - self.number_of_client > 0:
-                    self.newclient(self, current_socket, self.client_sockets, players)  # create new client
+                    self.newclient(current_socket, self.client_sockets, players)  # create new client
                     self.number_of_client += 1
                     print("players left to join: " + str(self.max_clients - self.number_of_client))
                 else:
@@ -102,7 +101,6 @@ class server:
 
         for message in self.messages_to_send:
             current_socket, data = message
-            # if current_socket in wlist:
             try:
                 current_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
                 self.messages_to_send.remove(message)
@@ -156,7 +154,6 @@ class server:
 
             pygame.time.delay(15)  # 60 frames per second
             self.game.game_time -= 1
-            # print(self.game.game_time)
 
             if self.game.game_time == 0:
                 self.game.leaderboard.winner(self.game.players)
@@ -365,10 +362,6 @@ class Game:
                 textRect.center = (300 // 2 + 800, leader_place)
                 self.txts.append((text_name, textRect))
                 leader_place += 50
-
-        """def bilt(self, game):
-            for text in self.txts:
-                game.display_surface.blit(text[0], text[1])"""
 
         def Serialize(self, num):
             orientation = Orientation(self.txts[num][1].x, self.txts[num][1].y, self.txts[num][1].width,

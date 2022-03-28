@@ -126,27 +126,6 @@ class ClientSide:
         sys.exit()
 
 
-class LeaderBoard:
-    def __init__(self):
-        self.txts = []
-
-        self.font = pygame.font.Font('freesansbold.ttf', 32)
-        text = self.font.render('leaderboard', True, (255, 0, 0), (0, 0, 0))
-        textRect = text.get_rect()
-        textRect.center = (300 // 2 + 800, 10)
-        self.txts.append((text, textRect))
-
-    def change_places(self, players):
-        leader_place = 50
-        for player in players:
-            text = self.font.render(str(player.name) + "           " + str(player.score), True, (255, 0, 0),
-                                    (0, 0, 0))
-            textRect = text.get_rect()
-            textRect.center = (300 // 2 + 800, leader_place)
-            self.txts.append((text, textRect))
-            leader_place += 50
-
-
 class Orientation:
     def __init__(self, x, y, width, height, angle, color, name):
         self.x = x
