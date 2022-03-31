@@ -1,4 +1,48 @@
 import mysql.connector
+import select
+import logging
+import socket
+
+logging.basicConfig(level=logging.DEBUG)
+
+
+class ServerSide:
+    def __init__(self):
+        self.SERVER_PORT = 6666
+        self.SERVER_IP = '0.0.0.0'
+        logging.debug("Setting up server...")
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
+        self.server_socket.listen()
+        logging.info("Listening for clients...")
+        self.client_sockets = []
+        self.number_of_client = 0
+
+    def run(self):
+        while True:
+            rlist, wlist, xlist = select.select([self.server_socket] + self.client_sockets, [], [])
+            for current_socket in rlist:
+                if current_socket is self.server_socket:  # new client joins
+                    try:
+                        self.newclient(current_socket, self.client_sockets)  # create new client
+                        self.number_of_client += 1
+                    except Exception as e:
+                        connection, client_address = current_socket.accept()
+                        connection.send("cant connect".encode())
+                        self.client_quit(self.client_sockets, current_socket)
+                else:  # what to do with client
+                    print("help")
+
+    def newclient(self, current_socket, client_sockets):
+        connection, client_address = current_socket.accept()
+        logging.info("New client joined!")
+        client_sockets.append(connection)
+
+    def client_quit(self, client_sockets, current_socket):
+        print(str(current_socket) + " left")
+        current_socket.shutdown(socket.SHUT_RDWR)
+        current_socket.close()
+        client_sockets.remove(current_socket)
 
 
 class Database:
@@ -82,7 +126,7 @@ class Database:
 def main():
     db = Database()
 
-    db.add('yuval', 'boiiiii', 9090)
+    db.add('yuval', 'boiiiii', 90)
 
     print(db.to_string())
     print(db.get_winner()[0::2])
