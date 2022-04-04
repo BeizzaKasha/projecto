@@ -2,12 +2,55 @@ import select
 import logging
 import socket
 import pickle
+import threading
+import time
 
 import pygame
 import random
 import math
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+class ClientSide:
+    def __init__(self):
+        self.my_socket = socket.socket()
+        ip = "127.0.0.1"
+        port = 6666
+        self.my_socket.connect((ip, port))
+        logging.debug("client side connected...")
+
+    def send(self, data):
+        self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
+
+    def read(self):
+        try:
+            lenoflen = int(self.my_socket.recv(4).decode())
+            lenght = int(self.my_socket.recv(lenoflen).decode())
+            # print(str(lenght))
+            data = self.my_socket.recv(lenght)
+            data = pickle.loads(data)
+            return data
+        except Exception as e:
+            logging.error(e)
+
+    def make_message(self, game):
+        stats = []
+        if len(game.players) != 0:
+            print("sending")
+            for player in game.players:
+                stats.append((player.name, player.name, player.score))
+        else:
+            print("not sending")
+            stats.append("nope")
+        return stats
+
+    def run(self, game):
+        while True:
+            stats = self.make_message(game)
+            self.send(pickle.dumps(stats))
+            # print(self.read())
+            time.sleep(2)
 
 
 class server:
@@ -19,20 +62,30 @@ class server:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
         self.server_socket.listen()
-        logging.info("Listening for clients...")
+        self.client_side = ClientSide()
         self.client_sockets = []
         self.messages_to_send = []
         self.number_of_client = 0
         self.max_clients = 10
         self.players_conection = {}
 
+        game_server = threading.Thread(target=self.game_maker)
+        database_connect = threading.Thread(target=self.client_side.run(self.game))
+        game_server.start()
+        database_connect.start()
+
+    def game_maker(self):
+        while True:
+            self.gamerun()
+            self.game.restart()
+
     def print_client_sockets(self, client_sockets):
         for i in range(len(client_sockets)):
-            logging.debug(client_sockets[i])
+            logging.debug("""   """ + str(client_sockets[i]))
 
     def newclient(self, current_socket, client_sockets, players):
         connection, client_address = current_socket.accept()
-        logging.info("New client joined!")
+        logging.info("New client joined:")
         client_sockets.append(connection)
         self.print_client_sockets(client_sockets)
         player = Game.Player()
@@ -59,7 +112,7 @@ class server:
                 if self.max_clients - self.number_of_client > 0:
                     self.newclient(current_socket, self.client_sockets, players)  # create new client
                     self.number_of_client += 1
-                    print("players left to join: " + str(self.max_clients - self.number_of_client))
+                    logging.info("    players left to join: " + str(self.max_clients - self.number_of_client))
                 else:
                     connection, client_address = current_socket.accept()
                     connection.send("cant connect".encode())
@@ -88,7 +141,7 @@ class server:
             self.messages_to_send.append((current_socket[1], pickle.dumps(bit_mesege)))
 
     def player_quit(self, client_sockets, current_socket, players):
-        print(str(current_socket) + " left")
+        logging.info(str(current_socket) + " left")
         players.remove(self.players_conection[current_socket])
         current_socket.shutdown(socket.SHUT_RDWR)
         current_socket.close()
@@ -105,26 +158,6 @@ class server:
                 self.messages_to_send.remove(message)
             except Exception as e:
                 logging.error("problem with sending a message: " + str(current_socket))
-
-    def colisions(self, game):
-        hit = pygame.sprite.Group()
-        for bullet in game.enemies:
-            bullet.mov()
-            if pygame.sprite.spritecollideany(bullet,
-                                              game.all_sprites) or 1000 < bullet.rect.x or bullet.rect.x < 0 or 800 < bullet.rect.y or bullet.rect.y < 0:
-                bullet.kill()
-            elif pygame.sprite.spritecollideany(bullet, game.players):
-                bullet.owner.score += 1
-                hit.add(bullet)
-                game.leaderboard.change_places(game.players)
-
-        for player in game.players:
-            if pygame.sprite.spritecollideany(player, hit):
-                player.rect.center = game.teleport(game.all_sprites)
-
-        for bullet in hit:
-            bullet.kill()
-        del hit
 
     def gamerun(self):
 
@@ -150,7 +183,7 @@ class server:
                     except Exception as e:
                         print(str(e) + " <---error")
 
-            self.colisions(self.game)
+            self.game.colisions()
 
             pygame.time.delay(15)  # 60 frames per second
             self.game.game_time -= 1
@@ -163,6 +196,8 @@ class server:
                 running = False
 
             self.sending(player_movement)
+            """self.client_side.send("hellp")
+            print(self.client_side.read())"""
 
 
 class Game:
@@ -280,7 +315,7 @@ class Game:
         def set_directangleion(self, look):
             mx, my = look
             dx, dy = mx - self.rect.centerx, my - self.rect.centery
-            self.angle = math.degrees(math.atan2(-dy, dx)) + 90
+            self.angle = math.degrees(math.atan2(-dy, dx)) + 90  # lehasbir
 
             self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
@@ -314,6 +349,26 @@ class Game:
             self.orientation.y = self.rect.y
             self.orientation.angle = self.angle
             return val
+
+    def colisions(self):
+        hit = pygame.sprite.Group()
+        for bullet in self.enemies:
+            bullet.mov()
+            if pygame.sprite.spritecollideany(bullet,
+                                              self.all_sprites) or 1000 < bullet.rect.x or bullet.rect.x < 0 or 800 < bullet.rect.y or bullet.rect.y < 0:
+                bullet.kill()
+            elif pygame.sprite.spritecollideany(bullet, self.players):
+                bullet.owner.score += 1
+                hit.add(bullet)
+                self.leaderboard.change_places(self.players)
+
+        for player in self.players:
+            if pygame.sprite.spritecollideany(player, hit):
+                player.rect.center = self.teleport(self.all_sprites)
+
+        for bullet in hit:
+            bullet.kill()
+        del hit
 
     class Walls(pygame.sprite.Sprite):
         def __init__(self):
@@ -406,18 +461,10 @@ class Orientation:
         self.name = name
 
 
-def game_maker(me):
-    me.gamerun()
-
-    me.game.restart()
-
-
 def main():
     pygame.init()
     me = server()
 
-    while True:
-        game_maker(me)
 
 
 if __name__ == "__main__":
