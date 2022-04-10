@@ -20,6 +20,8 @@ class ServerSide:
         self.number_of_client = 0
         self.messages_to_send = []
 
+        self.db = Database()
+
     def run(self):
         while True:
             rlist, wlist, xlist = select.select([self.server_socket] + self.client_sockets, [], [])
@@ -38,9 +40,35 @@ class ServerSide:
                     if client_mov == "quit":
                         self.client_quit(current_socket)
                     else:
-                        print(client_mov)
+                        self.update_all(client_mov)
+                        # print(client_mov)
                         players_movement.append((current_socket, client_mov))
             self.sending(players_movement)
+
+    def update_all(self, client_mov):
+        try:
+            for player in client_mov:
+                self.update_individual(player)
+            return True
+        except:
+            return False
+
+    def update_individual(self, player):
+        try:
+            history = self.db.read(player[0])[0][3]
+            try:
+                former_points = str(history).split(",")
+                points = 0
+                for former_point in former_points:
+                    points += float(former_point)
+            except:
+                points = float(history)
+                former_points = [history]
+            self.db.add(player[0], player[1], player[2], player[3], str(history) + "," + str(player[4]),
+                        (player[4] + points)/(len(former_points) + 1))
+        except:
+            self.db.add(player[0], player[1], player[2], player[3], player[4], player[4])
+        logging.info("update successful")
 
     def newclient(self, current_socket):
         connection, client_address = current_socket.accept()
@@ -93,7 +121,7 @@ class Database:
         self.mycursor = self.mydb.cursor()
 
     def is_exist(self, name):
-        sql = "SELECT * FROM mytry.help WHERE name = '" + name + "'"
+        sql = "SELECT * FROM realshit.players WHERE PlayerName = '" + name + "'"
         self.mycursor.execute(sql)
         place = self.mycursor.fetchall()
         if len(place) == 0:
@@ -101,38 +129,42 @@ class Database:
         else:
             return True
 
-    def add(self, name, password, point):  # add a value new, if already exist change old one to match the new input
+    def add(self, PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord):  # add a value new, if already exist change old one to match the new input
         try:
-            if self.is_exist(name):
-                self.delete(name)
-            sql = "INSERT INTO mytry.help (name, password, point) VALUES (%s, %s, %s)"
-            val = (name, password, point)
+            if self.is_exist(PlayerName):
+                self.delete(PlayerName)
+            sql = "INSERT INTO realshit.players " \
+                  "(PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord)" \
+                  " VALUES (%s, %s, %s, %s, %s, %s)"
+            val = (PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord)
+            print(val)
             self.mycursor.execute(sql, val)
             self.mydb.commit()
 
             return True  # if add successful return True
         except Exception as e:
-            # print(e)
+            print(e)
             return False  # if doesn't work return False
 
     def delete(self, name):
         try:
-            sql = "DELETE FROM mytry.help WHERE name = '" + name + "'"
+            myresult = self.read(name)
+            sql = "DELETE FROM realshit.players WHERE PlayerName = '" + name + "'"
             self.mycursor.execute(sql)
-            myresult = self.mycursor.fetchall()
+            self.mydb.commit()
             return myresult  # if delete successfully return what was deleted
         except Exception as e:
-            # print(e)
+            print(e)
             return False  # if doesn't work return False
 
     def read(self, name):
-        self.mycursor.execute("SELECT * FROM mytry.help where name = '" + name + "'")
+        self.mycursor.execute("SELECT * FROM realshit.players where PlayerName = '" + name + "'")
         myresult = self.mycursor.fetchall()
         return myresult
 
     def to_string(self):
         to_string = ""
-        self.mycursor.execute("SELECT * FROM mytry.help")
+        self.mycursor.execute("SELECT * FROM realshit.players")
         myresult = self.mycursor.fetchall()
         for x in myresult:
             to_string += str(x) + """
@@ -146,7 +178,7 @@ class Database:
 
     def get_names(self):
         names = []
-        self.mycursor.execute("SELECT * FROM mytry.help")
+        self.mycursor.execute("SELECT * FROM realshit.players")
         myresult = self.mycursor.fetchall()
         for x in myresult:
             names.append(x)
@@ -161,13 +193,12 @@ class Database:
 
 
 def main():
-    db = Database()
     ds = ServerSide()
 
-    db.add('nadav', 'qwerty00', 99)
+    """db.add('nadav', 'qwerty00', 99)
 
     print(db.to_string())
-    print(db.get_winner()[0::2])
+    print(db.get_winner()[0::2])"""
 
     ds.run()
 

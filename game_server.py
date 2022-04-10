@@ -39,18 +39,20 @@ class ClientSide:
         if len(game.players) != 0:
             print("sending")
             for player in game.players:
-                stats.append((player.name, player.name, player.score))
+                stats.append((player.name, player.name, "Nadav", str(time.localtime()),
+                              player.score / (500 * (15 / 1000)) / 60))
+                # 15 = milliseconds between game ticks, 500 = game time
         else:
             print("not sending")
             stats.append("nope")
         return stats
 
     def run(self, game):
-        while True:
-            stats = self.make_message(game)
-            self.send(pickle.dumps(stats))
-            # print(self.read())
-            time.sleep(2)
+        # while True:
+        stats = self.make_message(game)
+        self.send(pickle.dumps(stats))
+        # print(self.read())
+        # time.sleep(2)
 
 
 class server:
@@ -69,10 +71,11 @@ class server:
         self.max_clients = 10
         self.players_conection = {}
 
-        game_server = threading.Thread(target=self.game_maker)
+        """game_server = threading.Thread(target=self.game_maker())
         database_connect = threading.Thread(target=self.client_side.run(self.game))
         game_server.start()
-        database_connect.start()
+        database_connect.start()"""
+        self.game_maker()
 
     def game_maker(self):
         while True:
@@ -160,7 +163,6 @@ class server:
                 logging.error("problem with sending a message: " + str(current_socket))
 
     def gamerun(self):
-
         running = True
 
         while running:
@@ -190,6 +192,7 @@ class server:
 
             if self.game.game_time == 0:
                 self.game.leaderboard.winner(self.game.players)
+                self.client_side.run(self.game)
                 # print("time's over")
 
             if self.game.game_time == -100:
@@ -235,14 +238,15 @@ class Game:
             wall = Game.Walls()
             self.all_sprites.add(wall)
 
+        for player in self.players:
+            player.score = 0
+            player.rect.center = self.teleport(self.all_sprites)
+
         self.leaderboard = Game.LeaderBoard()
         self.leaderboard.change_places(self.players)
         bord, line = self.leaderboard.set_place()
         self.all_sprites.add(bord)
         self.all_sprites.add(line)
-
-        for player in self.players:
-            player.rect.center = self.teleport(self.all_sprites)
 
     class Enemy(pygame.sprite.Sprite):
         def __init__(self, player):
@@ -464,7 +468,6 @@ class Orientation:
 def main():
     pygame.init()
     me = server()
-
 
 
 if __name__ == "__main__":
