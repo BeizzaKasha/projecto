@@ -2,7 +2,6 @@ import select
 import logging
 import socket
 import pickle
-import threading
 import time
 
 import pygame
@@ -38,10 +37,15 @@ class ClientSide:
         stats = []
         if len(game.players) != 0:
             print("sending")
+            date = time.localtime()[0:-4]
+            update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
             for player in game.players:
-                stats.append((player.name, player.name, "Nadav", str(time.localtime()),
-                              player.score / (500 * (15 / 1000)) / 60))
-                # 15 = milliseconds between game ticks, 500 = game time
+                stats.append((player.name, player.name, "Nadav", update_date,
+                              player.score / ((game.round_time * (15 / 1000)) / 60)))
+            for player in game.quiters:
+                stats.append((player.name, player.name, "Nadav", update_date,
+                              player.score / ((game.round_time * (15 / 1000)) / 60)))
+                # ((game.game_time * (15 / 1000)) / 60) = time of round in minutes
         else:
             print("not sending")
             stats.append("nope")
@@ -86,13 +90,13 @@ class server:
         for i in range(len(client_sockets)):
             logging.debug("""   """ + str(client_sockets[i]))
 
-    def newclient(self, current_socket, client_sockets, players):
+    def newclient(self, current_socket, client_sockets):
         connection, client_address = current_socket.accept()
         logging.info("New client joined:")
         client_sockets.append(connection)
         self.print_client_sockets(client_sockets)
         player = Game.Player()
-        players.add(player)
+        self.game.players.add(player)
         self.players_conection[player] = connection
         self.players_conection[connection] = player
 
@@ -108,22 +112,22 @@ class server:
             rsv = "quit"
         return rsv
 
-    def get_from_clients(self, rlist, players):
+    def get_from_clients(self, rlist):
         players_movement = []
         for current_socket in rlist:
             if current_socket is self.server_socket:  # new client joins
                 if self.max_clients - self.number_of_client > 0:
-                    self.newclient(current_socket, self.client_sockets, players)  # create new client
+                    self.newclient(current_socket, self.client_sockets)  # create new client
                     self.number_of_client += 1
                     logging.info("    players left to join: " + str(self.max_clients - self.number_of_client))
                 else:
                     connection, client_address = current_socket.accept()
                     connection.send("cant connect".encode())
-                    self.player_quit(self.client_sockets, current_socket, players)
+                    self.player_quit(self.client_sockets, current_socket)
             else:  # what to do with client
                 move = self.client_mesege(current_socket)
                 if move == "quit":
-                    self.player_quit(self.client_sockets, current_socket, players)
+                    self.player_quit(self.client_sockets, current_socket)
                 else:
                     players_movement.append((move, current_socket))
                     self.players_conection[move] = current_socket
@@ -143,9 +147,11 @@ class server:
                 bit_mesege.append(LeaderBoard.Serialize(i))
             self.messages_to_send.append((current_socket[1], pickle.dumps(bit_mesege)))
 
-    def player_quit(self, client_sockets, current_socket, players):
+    def player_quit(self, client_sockets, current_socket):
         logging.info(str(current_socket) + " left")
-        players.remove(self.players_conection[current_socket])
+        left = self.players_conection[current_socket]
+        self.game.quiters.add(left)
+        self.game.players.remove(left)
         current_socket.shutdown(socket.SHUT_RDWR)
         current_socket.close()
         client_sockets.remove(current_socket)
@@ -167,7 +173,7 @@ class server:
 
         while running:
             rlist, wlist, xlist = select.select([self.server_socket] + self.client_sockets, [], [])
-            player_movement = self.get_from_clients(rlist, self.game.players)
+            player_movement = self.get_from_clients(rlist)
 
             if self.game.game_time > 0:
                 for movement in player_movement:
@@ -187,7 +193,7 @@ class server:
 
             self.game.colisions()
 
-            pygame.time.delay(15)  # 60 frames per second
+            pygame.time.delay(15)
             self.game.game_time -= 1
 
             if self.game.game_time == 0:
@@ -205,11 +211,13 @@ class server:
 
 class Game:
     def __init__(self):
-        self.game_time = 500
+        self.game_time = 2000
+        self.round_time = self.game_time
         self.SCREEN_WIDTH = 1100
         self.SCREEN_HEIGHT = 600
 
         self.players = pygame.sprite.Group()
+        self.quiters = pygame.sprite.Group()
 
         self.enemies = pygame.sprite.Group()
         self.all_sprites = pygame.sprite.Group()
