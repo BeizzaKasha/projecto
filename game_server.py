@@ -62,7 +62,7 @@ class ClientSide:
 class server:
     def __init__(self):
         self.game = Game()
-        self.SERVER_PORT = 5555
+        self.SERVER_PORT = 55555
         self.SERVER_IP = '0.0.0.0'
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -193,7 +193,7 @@ class server:
 
             self.game.colisions()
 
-            pygame.time.delay(15)
+            pygame.time.delay(1)
             self.game.game_time -= 1
 
             if self.game.game_time == 0:
