@@ -1,7 +1,6 @@
 import logging
 import pickle
 import socket
-import time
 import tkinter as tk
 import tkinter.ttk as ttk
 import sys
@@ -22,7 +21,7 @@ class ClientSide:
     def __init__(self):
         logging.debug("client begin")
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        ip = "10.51.101.87"
+        ip = "127.0.0.1"
         port = 55555
         self.my_socket.connect((ip, port))
         logging.info("connect to server at {0} with port {1}".format(ip, port))
@@ -147,6 +146,13 @@ class Toplevel1:
         _compcolor = '#d9d9d9'  # X11 color: 'gray85'
         _ana1color = '#d9d9d9'  # X11 color: 'gray85'
         _ana2color = '#ececec'  # Closest X11 color: 'gray92'
+
+        logging.debug("connection begin")
+        self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ip = "127.0.0.1"
+        port = 7777
+        self.my_socket.connect((ip, port))
+        logging.info("connect to server at {0} with port {1}".format(ip, port))
 
         self.top = top
         top.geometry("600x450+504+171")
@@ -284,10 +290,20 @@ class Toplevel1:
         sys.stdout.flush()
         sys.exit()
 
+    def send(self, data):
+        self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + pickle.dumps(data))
+
     def entername(self):
         print("username = " + str(self.Entry1.get()))
         print("password = " + str(self.Entry2.get()))
-        if str(self.Entry1.get()) != "nadav":
+        self.send((str(self.Entry1.get()), str(self.Entry2.get())))
+
+        lenoflen = int(self.my_socket.recv(4).decode())
+        lenght = int(self.my_socket.recv(lenoflen).decode())
+        print(str(lenght))
+        data = self.my_socket.recv(lenght)
+        data = pickle.loads(data)
+        if not data:
             self.print_error()
             self.Entry1.delete(0, 'end')
             self.Entry2.delete(0, 'end')

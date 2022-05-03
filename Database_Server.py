@@ -39,11 +39,25 @@ class ServerSide:
                     client_mov = self.client_mesege(current_socket)
                     if client_mov == "quit":
                         self.client_quit(current_socket)
-                    else:
+                    if client_mov[0] == "Game":
                         self.update_all(client_mov)
                         # print(client_mov)
-                        players_movement.append((current_socket, client_mov))
+                        players_movement.append((current_socket, "I love..."))
+                    if client_mov[0] == "Connection":
+                        is_ok = self.check_connection(client_mov[2], client_mov[3])
+                        players_movement.append((current_socket, is_ok))
             self.sending(players_movement)
+
+    def check_connection(self, name, password):
+        if not self.db.is_exist(name):
+            return True
+        else:
+            player = self.db.read(name)
+            if password == player[1] and player[6] is False:
+                self.db.add(player[0], player[1], player[2], player[3], player[4], player[5], True)
+                return True
+            else:
+                return False
 
     def update_all(self, client_mov):
         try:
@@ -65,9 +79,9 @@ class ServerSide:
                 points = float(history)
                 former_points = [history]
             self.db.add(player[0], player[1], player[2], player[3], str(history) + "," + str(player[4]),
-                        (player[4] + points)/(len(former_points) + 1))
+                        (player[4] + points) / (len(former_points) + 1), player[5])
         except:
-            self.db.add(player[0], player[1], player[2], player[3], player[4], player[4])
+            self.db.add(player[0], player[1], player[2], player[3], player[4], player[4], player[5])
         logging.info("update successful")
 
     def newclient(self, current_socket):
@@ -77,7 +91,7 @@ class ServerSide:
 
     def make_messages(self, players_movement):
         for client_data in players_movement:
-            self.messages_to_send.append((client_data[0], pickle.dumps("I love...")))
+            self.messages_to_send.append((client_data[0], pickle.dumps(client_data[1])))
 
     def client_mesege(self, current_socket):
         rsv = ""
@@ -129,14 +143,15 @@ class Database:
         else:
             return True
 
-    def add(self, PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord):  # add a value new, if already exist change old one to match the new input
+    def add(self, PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord,
+            is_connect):  # add a value new, if already exist change old one to match the new input
         try:
             if self.is_exist(PlayerName):
                 self.delete(PlayerName)
             sql = "INSERT INTO realshit.players " \
-                  "(PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord)" \
-                  " VALUES (%s, %s, %s, %s, %s, %s)"
-            val = (PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord)
+                  "(PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord, is_connect)" \
+                  " VALUES (%s, %s, %s, %s, %s, %s, %s)"
+            val = (PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord, is_connect)
             print(val)
             self.mycursor.execute(sql, val)
             self.mydb.commit()

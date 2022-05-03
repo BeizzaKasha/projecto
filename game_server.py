@@ -34,17 +34,17 @@ class ClientSide:
             logging.error(e)
 
     def make_message(self, game):
-        stats = []
+        stats = ["Game"]
         if len(game.players) != 0:
             print("sending")
             date = time.localtime()[0:-4]
             update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
             for player in game.players:
                 stats.append((player.name, player.name, "Nadav", update_date,
-                              player.score / ((game.round_time * (15 / 1000)) / 60)))
+                              player.score / ((game.round_time * (15 / 1000)) / 60), True))
             for player in game.quiters:
                 stats.append((player.name, player.name, "Nadav", update_date,
-                              player.score / ((game.round_time * (15 / 1000)) / 60)))
+                              player.score / ((game.round_time * (15 / 1000)) / 60), False))
                 # ((game.game_time * (15 / 1000)) / 60) = time of round in minutes
         else:
             print("not sending")
@@ -62,7 +62,7 @@ class ClientSide:
 class server:
     def __init__(self):
         self.game = Game()
-        self.SERVER_PORT = 55555
+        self.SERVER_PORT = 5555
         self.SERVER_IP = '0.0.0.0'
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -79,7 +79,6 @@ class server:
         database_connect = threading.Thread(target=self.client_side.run(self.game))
         game_server.start()
         database_connect.start()"""
-        self.game_maker()
 
     def game_maker(self):
         while True:
@@ -193,7 +192,7 @@ class server:
 
             self.game.colisions()
 
-            pygame.time.delay(1)
+            pygame.time.delay(15)
             self.game.game_time -= 1
 
             if self.game.game_time == 0:
@@ -476,6 +475,7 @@ class Orientation:
 def main():
     pygame.init()
     me = server()
+    me.game_maker()
 
 
 if __name__ == "__main__":
