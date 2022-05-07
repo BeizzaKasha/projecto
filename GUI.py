@@ -18,15 +18,12 @@ from pygame.locals import (
 
 
 class ClientSide:
-    def __init__(self):
+    def __init__(self, ip, port, name):
         logging.debug("client begin")
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        ip = "127.0.0.1"
-        port = 55555
         self.my_socket.connect((ip, port))
         logging.info("connect to server at {0} with port {1}".format(ip, port))
         pygame.init()
-
         self.SCREEN_WIDTH = 1100
         self.SCREEN_HEIGHT = 600
         pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
@@ -34,6 +31,7 @@ class ClientSide:
         pygame.display.set_caption('Show Text')
         self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.game = ""
+        self.name = name
 
     def game_run(self):
         running = True
@@ -51,7 +49,7 @@ class ClientSide:
                     self.close(True)
 
             movement = self.mov()
-            self.my_socket.send(pickle.dumps(movement))
+            self.my_socket.send(pickle.dumps((self.name, movement)))
             self.screen.fill((0, 0, 0))
 
             try:
@@ -164,8 +162,10 @@ class Toplevel1:
         top.configure(highlightbackground="#d9d9d9")
         top.configure(highlightcolor="black")
         self.style = ttk.Style()
-        self.correct = False
         self.Label4 = tk.Label(self.top)
+        self.ip = "127.0.0.1"
+        self.port = 5555
+        self.name = "none"
 
         self.Label1 = tk.Label(self.top)
         self.Label1.place(relx=0.05, rely=0.01, height=20, width=600)
@@ -283,34 +283,44 @@ class Toplevel1:
     def delete_error(self):
         self.Label4.destroy()
 
-    def quit(*args):
-        print('---------------quit----------------')
-        for arg in args:
-            print('another arg:', arg)
-        sys.stdout.flush()
-        sys.exit()
+    def quit(self, *args):
+        try:
+            self.send(pickle.dumps(99))
+        finally:
+            print('---------------quit----------------')
+            for arg in args:
+                print('another arg:', arg)
+            sys.stdout.flush()
+            sys.exit()
 
     def send(self, data):
-        self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + pickle.dumps(data))
+        self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
 
     def entername(self):
         print("username = " + str(self.Entry1.get()))
         print("password = " + str(self.Entry2.get()))
-        self.send((str(self.Entry1.get()), str(self.Entry2.get())))
+        self.send(pickle.dumps((self.Entry1.get(), self.Entry2.get())))
 
-        lenoflen = int(self.my_socket.recv(4).decode())
-        lenght = int(self.my_socket.recv(lenoflen).decode())
-        print(str(lenght))
-        data = self.my_socket.recv(lenght)
-        data = pickle.loads(data)
-        if not data:
-            self.print_error()
-            self.Entry1.delete(0, 'end')
-            self.Entry2.delete(0, 'end')
-        else:
-            self.delete_error()
-            self.top.destroy()
-            return
+        try:
+            lenoflen = int(self.my_socket.recv(4).decode())
+            lenght = int(self.my_socket.recv(lenoflen).decode())
+            data = self.my_socket.recv(lenght)
+            data = pickle.loads(data)
+            # print(data)
+            if not data:
+                self.print_error()
+                self.Entry1.delete(0, 'end')
+                self.Entry2.delete(0, 'end')
+            else:
+                self.name = str(self.Entry1.get())
+                self.ip = data[0].decode()
+                self.port = data[1]
+                self.my_socket.close()
+                self.delete_error()
+                self.top.destroy()
+        except Exception as e:
+            print(str(e) + " <---error")
+            sys.exit()
 
 
 def entering():
@@ -319,12 +329,13 @@ def entering():
     _w1 = Toplevel1(root)
     # root.after(1000, _w1.loop, root)
     root.mainloop()
+    return _w1.ip, _w1.port, _w1.name
 
 
 def main():
-    entering()
+    ip, port, name = entering()
     logging.basicConfig(level=logging.DEBUG)
-    me = ClientSide()
+    me = ClientSide(ip, port, name)
     me.game_run()
 
 

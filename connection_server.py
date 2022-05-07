@@ -35,10 +35,10 @@ class ServerSide:
                         self.client_quit(current_socket)
                 else:  # what to do with client
                     client_mov = self.client_mesege(current_socket)
-                    if client_mov == "quit":
+                    if client_mov == 99:
                         self.client_quit(current_socket)
                     else:
-                        is_ok = self.client_side.comunicate(current_socket, client_mov)
+                        is_ok = self.client_side.comunicate(client_mov)
                         # print(client_mov)
                         players_movement.append((current_socket, is_ok))
             self.sending(players_movement)
@@ -52,23 +52,21 @@ class ServerSide:
     def make_messages(self, players_movement):
         for client_data in players_movement:
             if client_data[1]:
-                self.messages_to_send.append((client_data[0], (True, "0.0.0.0", 5555)))
+                self.messages_to_send.append((client_data[0], pickle.dumps(('127.0.0.1'.encode(), 5555))))
             else:
-                self.messages_to_send.append((client_data[0], False))
+                self.messages_to_send.append((client_data[0], pickle.dumps(False)))
 
     def client_mesege(self, current_socket):
         rsv = ""
         try:
             lenoflen = int(current_socket.recv(4).decode())
-            print(lenoflen)
             lenght = int(current_socket.recv(lenoflen).decode())
-            print(lenght)
             rsv = current_socket.recv(lenght)
-            print(rsv)
             rsv = pickle.loads(rsv)
+            print(rsv)
         except:
             logging.error("problem with resiving a message: " + str(current_socket))
-            rsv = "quit"
+            rsv = 99
         finally:
             return rsv
 
@@ -78,7 +76,7 @@ class ServerSide:
             current_socket, data = message
             try:
                 current_socket.send(
-                    str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + pickle.dumps(data))
+                    str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
                 self.messages_to_send.remove(message)
             except Exception as e:
                 logging.error("problem with sending a message: " + str(current_socket))
@@ -113,18 +111,20 @@ class ClientSide:
         except Exception as e:
             logging.error(e)
 
-    def make_message(self, current_socket, name, password):
+    def make_message(self, name, password):
         if name != "" and password != "":
-            return "Connection", current_socket, name, password
+            return [1, name, password]
         else:
             print("not sending")
-            return "nope"
+            return 0
 
-    def comunicate(self, current_socket, client_mov):
-        message = self.make_message(current_socket, client_mov[0], client_mov[1])
-        self.send(message)
-        rtr = self.read()
-        return rtr
+    def comunicate(self, client_mov):
+        message = self.make_message(client_mov[0], client_mov[1])
+        if message[0] == 1:
+            self.send(pickle.dumps(message))
+            rtr = self.read()
+            return rtr
+        return False
 
 
 def main():

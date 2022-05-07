@@ -34,17 +34,17 @@ class ClientSide:
             logging.error(e)
 
     def make_message(self, game):
-        stats = ["Game"]
+        stats = [0]
         if len(game.players) != 0:
             print("sending")
             date = time.localtime()[0:-4]
             update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
             for player in game.players:
-                stats.append((player.name, player.name, "Nadav", update_date,
-                              player.score / ((game.round_time * (15 / 1000)) / 60), True))
+                stats.append((player.name, player.password, "Nadav", update_date,
+                              player.score / ((game.round_time * (10 / 1000)) / 60), True))
             for player in game.quiters:
-                stats.append((player.name, player.name, "Nadav", update_date,
-                              player.score / ((game.round_time * (15 / 1000)) / 60), False))
+                stats.append((player.name, player.password, "Nadav", update_date,
+                              player.score / ((game.round_time * (10 / 1000)) / 60), False))
                 # ((game.game_time * (15 / 1000)) / 60) = time of round in minutes
         else:
             print("not sending")
@@ -75,11 +75,6 @@ class server:
         self.max_clients = 10
         self.players_conection = {}
 
-        """game_server = threading.Thread(target=self.game_maker())
-        database_connect = threading.Thread(target=self.client_side.run(self.game))
-        game_server.start()
-        database_connect.start()"""
-
     def game_maker(self):
         while True:
             self.gamerun()
@@ -102,6 +97,11 @@ class server:
         player.rect.center = self.game.teleport(self.game.all_sprites)
         self.game.leaderboard.change_places(self.game.players)
 
+    def change_client_name(self, current_socket, name):
+        player = self.players_conection[current_socket]
+        # print(name, player.name)
+        player.name = name
+
     def client_mesege(self, current_socket):
         try:
             rsv = current_socket.recv(1024)  # get the client messege, do what ever u want with it--->
@@ -122,14 +122,15 @@ class server:
                 else:
                     connection, client_address = current_socket.accept()
                     connection.send("cant connect".encode())
-                    self.player_quit(self.client_sockets, current_socket)
+                    self.player_quit(current_socket)
             else:  # what to do with client
                 move = self.client_mesege(current_socket)
                 if move == "quit":
-                    self.player_quit(self.client_sockets, current_socket)
+                    self.player_quit(current_socket)
                 else:
-                    players_movement.append((move, current_socket))
-                    self.players_conection[move] = current_socket
+                    self.change_client_name(current_socket, move[0])
+                    players_movement.append((move[1], current_socket))
+                    self.players_conection[move[1]] = current_socket
                     # mov_makers.append(current_socket)
         return players_movement
 
@@ -146,14 +147,14 @@ class server:
                 bit_mesege.append(LeaderBoard.Serialize(i))
             self.messages_to_send.append((current_socket[1], pickle.dumps(bit_mesege)))
 
-    def player_quit(self, client_sockets, current_socket):
+    def player_quit(self, current_socket):
         logging.info(str(current_socket) + " left")
         left = self.players_conection[current_socket]
         self.game.quiters.add(left)
         self.game.players.remove(left)
         current_socket.shutdown(socket.SHUT_RDWR)
         current_socket.close()
-        client_sockets.remove(current_socket)
+        self.client_sockets.remove(current_socket)
 
     def sending(self, mov_makers):
         self.make_messeges(mov_makers, self.game.players, self.game.enemies, self.game.all_sprites,
@@ -192,7 +193,7 @@ class server:
 
             self.game.colisions()
 
-            pygame.time.delay(15)
+            pygame.time.delay(10)
             self.game.game_time -= 1
 
             if self.game.game_time == 0:
@@ -311,7 +312,8 @@ class Game:
             self.firing_speed = 6
             self.fire_wait = 120
             self.t_wait = 120
-            self.name = str(random.randint(1, 20))
+            self.name = "none"
+            self.password = "none"
             self.score = 0
             self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.angle,
                                            'red', "")
@@ -326,7 +328,7 @@ class Game:
         def set_directangleion(self, look):
             mx, my = look
             dx, dy = mx - self.rect.centerx, my - self.rect.centery
-            self.angle = math.degrees(math.atan2(-dy, dx)) + 90  # lehasbir
+            self.angle = math.degrees(math.atan2(-dy, dx)) + 90
 
             self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
@@ -362,6 +364,7 @@ class Game:
             return val
 
     def colisions(self):
+        self.leaderboard.change_places(self.players)
         hit = pygame.sprite.Group()
         for bullet in self.enemies:
             bullet.mov()
@@ -371,7 +374,6 @@ class Game:
             elif pygame.sprite.spritecollideany(bullet, self.players):
                 bullet.owner.score += 1
                 hit.add(bullet)
-                self.leaderboard.change_places(self.players)
 
         for player in self.players:
             if pygame.sprite.spritecollideany(player, hit):

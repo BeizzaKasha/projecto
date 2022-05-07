@@ -37,24 +37,26 @@ class ServerSide:
                         self.client_quit(current_socket)
                 else:  # what to do with client
                     client_mov = self.client_mesege(current_socket)
+                    print(client_mov)
                     if client_mov == "quit":
                         self.client_quit(current_socket)
-                    if client_mov[0] == "Game":
-                        self.update_all(client_mov)
+                    if client_mov[0] == 0:  # game_server
+                        self.update_all(client_mov[1:])
                         # print(client_mov)
                         players_movement.append((current_socket, "I love..."))
-                    if client_mov[0] == "Connection":
-                        is_ok = self.check_connection(client_mov[2], client_mov[3])
+                    if client_mov[0] == 1:  # connection_server
+                        is_ok = self.check_connection(client_mov[1], client_mov[2])
+                        print(is_ok)
                         players_movement.append((current_socket, is_ok))
             self.sending(players_movement)
 
     def check_connection(self, name, password):
         if not self.db.is_exist(name):
-            return True
+            return False
         else:
-            player = self.db.read(name)
-            if password == player[1] and player[6] is False:
-                self.db.add(player[0], player[1], player[2], player[3], player[4], player[5], True)
+            player = self.db.read(name)[0]
+            if password == player[1] and player[6] == 0:
+                self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], 1)
                 return True
             else:
                 return False
@@ -64,12 +66,16 @@ class ServerSide:
             for player in client_mov:
                 self.update_individual(player)
             return True
-        except:
+        except Exception as e:
+            print(e)
             return False
 
-    def update_individual(self, player):
+    def update_individual(self, client_player):
+        database_player = self.db.read(client_player[0])[0]
+        password = database_player[1]
+        client_name = database_player[5]
         try:
-            history = self.db.read(player[0])[0][3]
+            history = database_player[3]
             try:
                 former_points = str(history).split(",")
                 points = 0
@@ -78,10 +84,10 @@ class ServerSide:
             except:
                 points = float(history)
                 former_points = [history]
-            self.db.add(player[0], player[1], player[2], player[3], str(history) + "," + str(player[4]),
-                        (player[4] + points) / (len(former_points) + 1), player[5])
+            self.db.add(client_player[0], password, client_name, client_player[3], str(history) + "," + str(client_player[4]),
+                        (client_player[4] + points) / (len(former_points) + 1), client_player[5])
         except:
-            self.db.add(player[0], player[1], player[2], player[3], player[4], player[4], player[5])
+            self.db.add(client_player[0], password, client_name, client_player[3], client_player[4], client_player[4], client_player[5])
         logging.info("update successful")
 
     def newclient(self, current_socket):
