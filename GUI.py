@@ -95,7 +95,7 @@ class ClientSide:
             self.rot_image = pygame.transform.rotate(self.rectangle, angle)
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
             self.name = name
-            self.font = pygame.font.Font('freesansbold.ttf', 32)
+            self.font = pygame.font.Font('freesansbold.ttf', int(angle))
             self.text = self.font.render(self.name, True, self.color, (0, 0, 0))
 
     def mov(self):

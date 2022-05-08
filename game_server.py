@@ -2,6 +2,7 @@ import select
 import logging
 import socket
 import pickle
+import sys
 import time
 
 import pygame
@@ -35,28 +36,28 @@ class ClientSide:
 
     def make_message(self, game):
         stats = [0]
-        if len(game.players) != 0:
-            print("sending")
-            date = time.localtime()[0:-4]
-            update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
-            for player in game.players:
-                stats.append((player.name, player.password, "Nadav", update_date,
-                              player.score / ((game.round_time * (10 / 1000)) / 60), True))
-            for player in game.quiters:
-                stats.append((player.name, player.password, "Nadav", update_date,
-                              player.score / ((game.round_time * (10 / 1000)) / 60), False))
-                # ((game.game_time * (15 / 1000)) / 60) = time of round in minutes
-        else:
-            print("not sending")
-            stats.append("nope")
+        print("sending")
+        date = time.localtime()[0:-4]
+        update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
+        for player in game.players:
+            stats.append((player.name, player.password, "Nadav", update_date,
+                          player.score / ((game.round_time * (10 / 1000)) / 60), True))
+        for player in game.quiters:
+            stats.append((player.name, player.password, "Nadav", update_date,
+                          player.score / ((game.round_time * (10 / 1000)) / 60), False))
+            # ((game.game_time * (15 / 1000)) / 60) = time of round in minutes
         return stats
 
     def run(self, game):
-        # while True:
         stats = self.make_message(game)
         self.send(pickle.dumps(stats))
-        # print(self.read())
-        # time.sleep(2)
+        self.read()
+
+    def close(self, game):
+        stats = self.make_message(game)
+        self.send(pickle.dumps(stats))
+        self.read()
+        self.send(pickle.dumps(99))
 
 
 class server:
@@ -74,11 +75,16 @@ class server:
         self.number_of_client = 0
         self.max_clients = 10
         self.players_conection = {}
+        self.active = False
 
     def game_maker(self):
         while True:
             self.gamerun()
             self.game.restart()
+
+    def close_server(self):
+        self.client_side.close(self.game)
+        sys.exit()
 
     def print_client_sockets(self, client_sockets):
         for i in range(len(client_sockets)):
@@ -93,6 +99,8 @@ class server:
         self.game.players.add(player)
         self.players_conection[player] = connection
         self.players_conection[connection] = player
+        self.number_of_client += 1
+        self.active = True
 
         player.rect.center = self.game.teleport(self.game.all_sprites)
         self.game.leaderboard.change_places(self.game.players)
@@ -117,7 +125,6 @@ class server:
             if current_socket is self.server_socket:  # new client joins
                 if self.max_clients - self.number_of_client > 0:
                     self.newclient(current_socket, self.client_sockets)  # create new client
-                    self.number_of_client += 1
                     logging.info("    players left to join: " + str(self.max_clients - self.number_of_client))
                 else:
                     connection, client_address = current_socket.accept()
@@ -155,6 +162,9 @@ class server:
         current_socket.shutdown(socket.SHUT_RDWR)
         current_socket.close()
         self.client_sockets.remove(current_socket)
+        self.number_of_client -= 1
+        if self.active and self.number_of_client == 0:
+            self.close_server()
 
     def sending(self, mov_makers):
         self.make_messeges(mov_makers, self.game.players, self.game.enemies, self.game.all_sprites,
@@ -196,17 +206,14 @@ class server:
             pygame.time.delay(10)
             self.game.game_time -= 1
 
-            if self.game.game_time == 0:
+            if self.game.game_time <= 2000:
                 self.game.leaderboard.winner(self.game.players)
-                self.client_side.run(self.game)
-                # print("time's over")
 
-            if self.game.game_time == -100:
+            if self.game.game_time == -300:
+                self.client_side.run(self.game)
                 running = False
 
             self.sending(player_movement)
-            """self.client_side.send("hellp")
-            print(self.client_side.read())"""
 
 
 class Game:
@@ -418,22 +425,22 @@ class Game:
             text = self.font.render('leaderboard', True, (255, 0, 0), (0, 0, 0))
             text_name = "leaderboard"
             textRect = text.get_rect()
-            textRect.center = (300 // 2 + 800, 10)
-            self.txts.append((text_name, textRect))
+            textRect.center = (920, 10)
+            self.txts.append((text_name, textRect, 40, 'white'))
 
-            leader_place = 50
+            leader_place = 70
             for player in players:
                 text = self.font.render(str(player.name) + "           " + str(player.score), True, (255, 0, 0),
                                         (0, 0, 0))
                 text_name = str(player.name) + "           " + str(player.score)
                 textRect = text.get_rect()
                 textRect.center = (300 // 2 + 800, leader_place)
-                self.txts.append((text_name, textRect))
+                self.txts.append((text_name, textRect, 32, 'white'))
                 leader_place += 50
 
         def Serialize(self, num):
             orientation = Orientation(self.txts[num][1].x, self.txts[num][1].y, self.txts[num][1].width,
-                                      self.txts[num][1].height, 0, 'white', self.txts[num][0])
+                                      self.txts[num][1].height, self.txts[num][2], self.txts[num][3], self.txts[num][0])
             return pickle.dumps(orientation)
 
         class Block(pygame.sprite.Sprite):
@@ -454,13 +461,14 @@ class Game:
             for player in players:
                 if winner.score < player.score:
                     winner = player
-            font = pygame.font.Font('freesansbold.ttf', 100)
-            text = font.render(str(winner.name) + " is the winner!!!", True, (255, 10, 150), (0, 0, 0))
+            font = pygame.font.Font('freesansbold.ttf', 55)
+            text = font.render(str(winner.name) + " is the winner!!!", True, (255, 10, 50))
             text_name = str(winner.name) + " is the winner!!!"
-            text.set_colorkey((0, 0, 0))
+            # text.set_colorkey((0, 0, 0))
+            # text.set_alpha(127)
             textRect = text.get_rect()
-            textRect.center = (550, 300)
-            self.txts.append((text_name, textRect))
+            textRect.center = (500, 200)
+            self.txts.append((text_name, textRect, 60, (255, 10, 50)))
 
 
 class Orientation:

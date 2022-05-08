@@ -38,15 +38,15 @@ class ServerSide:
                 else:  # what to do with client
                     client_mov = self.client_mesege(current_socket)
                     print(client_mov)
-                    if client_mov == "quit":
+                    if client_mov == 99:
                         self.client_quit(current_socket)
-                    if client_mov[0] == 0:  # game_server
+                    elif client_mov[0] == 0:  # game_server
                         self.update_all(client_mov[1:])
                         # print(client_mov)
                         players_movement.append((current_socket, "I love..."))
-                    if client_mov[0] == 1:  # connection_server
+                    elif client_mov[0] == 1:  # connection_server
                         is_ok = self.check_connection(client_mov[1], client_mov[2])
-                        print(is_ok)
+                        # print(is_ok)
                         players_movement.append((current_socket, is_ok))
             self.sending(players_movement)
 
@@ -56,7 +56,7 @@ class ServerSide:
         else:
             player = self.db.read(name)[0]
             if password == player[1] and player[6] == 0:
-                self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], 1)
+                self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], True)
                 return True
             else:
                 return False
@@ -108,7 +108,7 @@ class ServerSide:
             rsv = pickle.loads(rsv)
         except:
             logging.error("problem with resiving a message: " + str(current_socket))
-            rsv = "quit"
+            rsv = 99
         finally:
             return rsv
 
