@@ -19,6 +19,7 @@ class ServerSide:
         self.client_sockets = []
         self.number_of_client = 0
         self.messages_to_send = []
+        self.game_servers = {}
 
         self.db = Database()
 
@@ -36,30 +37,51 @@ class ServerSide:
                         connection.send("cant connect".encode())
                         self.client_quit(current_socket)
                 else:  # what to do with client
-                    client_mov = self.client_mesege(current_socket)
-                    print(client_mov)
-                    if client_mov == 99:
-                        self.client_quit(current_socket)
-                    elif client_mov[0] == 0:  # game_server
-                        self.update_all(client_mov[1:])
-                        # print(client_mov)
-                        players_movement.append((current_socket, "I love..."))
-                    elif client_mov[0] == 1:  # connection_server
-                        is_ok = self.check_connection(client_mov[1], client_mov[2])
-                        # print(is_ok)
-                        players_movement.append((current_socket, is_ok))
+                    players_movement = self.client_actions(current_socket)
             self.sending(players_movement)
+
+    def client_actions(self, current_socket):
+        players_movement = []
+        client_mov = self.client_mesege(current_socket)
+        print(client_mov)
+        if client_mov == 99:
+            self.client_quit(current_socket)
+        elif client_mov[0] == 0:  # game_server
+            self.game_servers[current_socket][2] = client_mov[1]
+            self.update_all(client_mov[2:])
+            # print(client_mov)
+            players_movement.append((current_socket, "I love..."))
+        elif client_mov[0] == 1:  # connection_server
+            is_ok = self.check_connection(client_mov[1], client_mov[2])
+            # print(is_ok)
+            players_movement.append((current_socket, is_ok))
+        elif client_mov[0] == 2:  # new game server at wait
+            self.game_servers[current_socket] = [client_mov[1], str(client_mov[2])[2:-1], client_mov[3]]
+        elif client_mov[0] == 3:  # home screen
+            player = self.db.read(client_mov[1].encode())[0]
+            players_movement.append((current_socket, player))
+        return players_movement
 
     def check_connection(self, name, password):
         if not self.db.is_exist(name):
-            return False
+            return [False, 0]
         else:
             player = self.db.read(name)[0]
             if password == player[1] and player[6] == 0:
                 self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], True)
-                return True
+                return [True]  # self.pick_server()
             else:
-                return False
+                return [False, 1]
+
+    def pick_server(self):
+        minimum = 10
+        selected_server = ["127.0.0.1".encode(), 5555]
+        for server in self.game_servers:
+            print(self.game_servers[server])
+            if self.game_servers[server][2] < minimum:
+                selected_server = [self.game_servers[server][0], self.game_servers[server][1]]
+                minimum = self.game_servers[server][3]
+        return selected_server
 
     def update_all(self, client_mov):
         try:
@@ -84,11 +106,14 @@ class ServerSide:
             except:
                 points = float(history)
                 former_points = [history]
-            self.db.add(client_player[0], password, client_name, client_player[3], str(history) + "," + str(client_player[4]),
+            self.db.add(client_player[0], password, client_name, client_player[3],
+                        str(history) + "," + str(client_player[4]),
                         (client_player[4] + points) / (len(former_points) + 1), client_player[5])
         except:
-            self.db.add(client_player[0], password, client_name, client_player[3], client_player[4], client_player[4], client_player[5])
-        logging.info("update successful")
+            self.db.add(client_player[0], password, client_name, client_player[3], client_player[4], client_player[4],
+                        client_player[5])
+        finally:
+            logging.info("update successful")
 
     def newclient(self, current_socket):
         connection, client_address = current_socket.accept()

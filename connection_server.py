@@ -37,9 +37,21 @@ class ServerSide:
                     client_mov = self.client_mesege(current_socket)
                     if client_mov == 99:
                         self.client_quit(current_socket)
-                    else:
+                    elif client_mov[0] == 0:
                         is_ok = self.client_side.comunicate(client_mov)
-                        # print(client_mov)
+                        if is_ok[1] == 1:
+                            is_ok = [False]
+                        players_movement.append((current_socket, is_ok))
+                    elif client_mov[0] == 1:
+                        is_ok = self.client_side.comunicate(client_mov)
+                        if is_ok[1] == 0:
+                            is_ok = [True]
+                        if is_ok:
+                            is_ok = [False]
+                        players_movement.append((current_socket, is_ok))
+                    elif client_mov[0] == 2:
+                        self.client_side.send([3, client_mov[1]])
+                        is_ok = self.client_side.read()
                         players_movement.append((current_socket, is_ok))
             self.sending(players_movement)
             del players_movement
@@ -51,10 +63,12 @@ class ServerSide:
 
     def make_messages(self, players_movement):
         for client_data in players_movement:
-            if client_data[1]:
-                self.messages_to_send.append((client_data[0], pickle.dumps(('127.0.0.1'.encode(), 5555))))
-            else:
+            print(client_data)
+            if not client_data[1][0]:
                 self.messages_to_send.append((client_data[0], pickle.dumps(False)))
+            else:
+                print(client_data)
+                self.messages_to_send.append((client_data[0], pickle.dumps((client_data[1][1][0], client_data[1][1][1]))))
 
     def client_mesege(self, current_socket):
         rsv = ""
@@ -74,13 +88,13 @@ class ServerSide:
         self.make_messages(players_movement)
         for message in self.messages_to_send:
             current_socket, data = message
-            try:
-                current_socket.send(
-                    str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
-                self.messages_to_send.remove(message)
-            except Exception as e:
+            # try:
+            current_socket.send(
+                str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
+            self.messages_to_send.remove(message)
+            """except Exception as e:
                 logging.error("problem with sending a message: " + str(current_socket))
-                self.client_quit(current_socket)
+                self.client_quit(current_socket)"""
 
     def client_quit(self, current_socket):
         print(str(current_socket) + " left")

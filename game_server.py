@@ -13,11 +13,12 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class ClientSide:
-    def __init__(self):
+    def __init__(self, server_port, server_ip,  max_clients):
         self.my_socket = socket.socket()
         ip = "127.0.0.1"
         port = 6666
         self.my_socket.connect((ip, port))
+        self.send(pickle.dumps([2, server_port, server_ip.encode(),  max_clients]))
         logging.debug("client side connected...")
 
     def send(self, data):
@@ -27,15 +28,14 @@ class ClientSide:
         try:
             lenoflen = int(self.my_socket.recv(4).decode())
             lenght = int(self.my_socket.recv(lenoflen).decode())
-            # print(str(lenght))
             data = self.my_socket.recv(lenght)
             data = pickle.loads(data)
             return data
         except Exception as e:
             logging.error(e)
 
-    def make_message(self, game):
-        stats = [0]
+    def make_message(self, game, space):
+        stats = [0, space]
         print("sending")
         date = time.localtime()[0:-4]
         update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
@@ -45,16 +45,16 @@ class ClientSide:
         for player in game.quiters:
             stats.append((player.name, player.password, "Nadav", update_date,
                           player.score / ((game.round_time * (10 / 1000)) / 60), False))
-            # ((game.game_time * (15 / 1000)) / 60) = time of round in minutes
+            # ((game.game_time * (10 / 1000)) / 60) = time of round in minutes
         return stats
 
-    def run(self, game):
-        stats = self.make_message(game)
+    def run(self, game, space):
+        stats = self.make_message(game, space)
         self.send(pickle.dumps(stats))
         self.read()
 
-    def close(self, game):
-        stats = self.make_message(game)
+    def close(self, game, space):
+        stats = self.make_message(game, space)
         self.send(pickle.dumps(stats))
         self.read()
         self.send(pickle.dumps(99))
@@ -69,13 +69,13 @@ class server:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
         self.server_socket.listen()
-        self.client_side = ClientSide()
+        self.max_clients = 10
+        self.client_side = ClientSide(self.SERVER_PORT, self.SERVER_IP, self.max_clients)
         self.client_sockets = []
         self.messages_to_send = []
         self.number_of_client = 0
-        self.max_clients = 10
         self.players_conection = {}
-        self.active = False
+        self.active = False # subprocess.popen
 
     def game_maker(self):
         while True:
@@ -83,7 +83,7 @@ class server:
             self.game.restart()
 
     def close_server(self):
-        self.client_side.close(self.game)
+        self.client_side.close(self.game, self.max_clients - self.number_of_client)
         sys.exit()
 
     def print_client_sockets(self, client_sockets):
@@ -206,11 +206,11 @@ class server:
             pygame.time.delay(10)
             self.game.game_time -= 1
 
-            if self.game.game_time <= 2000:
+            if self.game.game_time <= 0:
                 self.game.leaderboard.winner(self.game.players)
 
             if self.game.game_time == -300:
-                self.client_side.run(self.game)
+                self.client_side.run(self.game, self.max_clients - self.number_of_client)
                 running = False
 
             self.sending(player_movement)
@@ -461,14 +461,14 @@ class Game:
             for player in players:
                 if winner.score < player.score:
                     winner = player
-            font = pygame.font.Font('freesansbold.ttf', 55)
-            text = font.render(str(winner.name) + " is the winner!!!", True, (255, 10, 50))
+            color = (255, 215, 0)
+            size = 60
+            font = pygame.font.Font('freesansbold.ttf', size)
+            text = font.render(str(winner.name) + " is the winner!!!", True, color)
             text_name = str(winner.name) + " is the winner!!!"
-            # text.set_colorkey((0, 0, 0))
-            # text.set_alpha(127)
             textRect = text.get_rect()
-            textRect.center = (500, 200)
-            self.txts.append((text_name, textRect, 60, (255, 10, 50)))
+            textRect.center = (450, 300)
+            self.txts.append((text_name, textRect, size, color))
 
 
 class Orientation:
