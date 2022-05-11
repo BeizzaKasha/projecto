@@ -37,22 +37,28 @@ class ServerSide:
                     client_mov = self.client_mesege(current_socket)
                     if client_mov == 99:
                         self.client_quit(current_socket)
-                    elif client_mov[0] == 0:
-                        is_ok = self.client_side.comunicate(client_mov)
-                        if is_ok[1] == 1:
-                            is_ok = [False]
+                    elif client_mov[0] == 0:  # user connect
+                        is_ok = self.client_side.comunicate(client_mov[1:])
+                        if not is_ok[0]:
+                            is_ok = False
+                        else:
+                            is_ok = True
                         players_movement.append((current_socket, is_ok))
-                    elif client_mov[0] == 1:
-                        is_ok = self.client_side.comunicate(client_mov)
+                    elif client_mov[0] == 1:  # new user
+                        is_ok = self.client_side.comunicate(client_mov[1:])
                         if is_ok[1] == 0:
-                            is_ok = [True]
-                        if is_ok:
-                            is_ok = [False]
+                            is_ok = True
+                        else:
+                            is_ok = False
                         players_movement.append((current_socket, is_ok))
-                    elif client_mov[0] == 2:
-                        self.client_side.send([3, client_mov[1]])
+                    elif client_mov[0] == 2:  # home screen
+                        self.client_side.send(pickle.dumps([3, client_mov[1]]))
                         is_ok = self.client_side.read()
                         players_movement.append((current_socket, is_ok))
+                    elif client_mov[0] == 3:  # home screen quiting
+                        self.client_side.send(pickle.dumps([4, client_mov[1]]))
+                        self.client_side.read()
+                        self.client_quit(current_socket)
             self.sending(players_movement)
             del players_movement
 
@@ -63,12 +69,8 @@ class ServerSide:
 
     def make_messages(self, players_movement):
         for client_data in players_movement:
-            print(client_data)
-            if not client_data[1][0]:
-                self.messages_to_send.append((client_data[0], pickle.dumps(False)))
-            else:
-                print(client_data)
-                self.messages_to_send.append((client_data[0], pickle.dumps((client_data[1][1][0], client_data[1][1][1]))))
+            print(client_data[1])
+            self.messages_to_send.append((client_data[0], pickle.dumps(client_data[1])))
 
     def client_mesege(self, current_socket):
         rsv = ""

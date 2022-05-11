@@ -4,7 +4,7 @@ import logging
 import socket
 import pickle
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 class ServerSide:
@@ -53,13 +53,16 @@ class ServerSide:
             players_movement.append((current_socket, "I love..."))
         elif client_mov[0] == 1:  # connection_server
             is_ok = self.check_connection(client_mov[1], client_mov[2])
-            # print(is_ok)
             players_movement.append((current_socket, is_ok))
         elif client_mov[0] == 2:  # new game server at wait
             self.game_servers[current_socket] = [client_mov[1], str(client_mov[2])[2:-1], client_mov[3]]
         elif client_mov[0] == 3:  # home screen
-            player = self.db.read(client_mov[1].encode())[0]
-            players_movement.append((current_socket, player))
+            player = self.db.read(client_mov[1].decode())[0]
+            players_movement.append((current_socket, (player, self.pick_server())))
+        elif client_mov[0] == 4:  # home screen quit
+            player = self.db.read(client_mov[1].decode())[0]
+            self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], False)
+            players_movement.append((current_socket, (99)))
         return players_movement
 
     def check_connection(self, name, password):

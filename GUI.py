@@ -4,6 +4,7 @@ import socket
 import tkinter as tk
 import tkinter.ttk as ttk
 import sys
+import time
 
 import pygame
 from pygame.locals import (
@@ -59,12 +60,10 @@ class ClientSide:
                 if event.type == KEYDOWN:
                     if event.key == K_ESCAPE:
                         self.my_socket.send(pickle.dumps("quit"))
-                        running = False
-                        self.close(True)
+                        running = self.close(True)
                 elif event.type == QUIT:
-                    running = False
                     self.my_socket.send(pickle.dumps("quit"))
-                    self.close(True)
+                    running = self.close(True)
 
             movement = self.mov()
             self.my_socket.send(pickle.dumps((self.name, movement)))
@@ -127,7 +126,7 @@ class ClientSide:
             logging.debug("client close, client side")
         else:
             logging.debug("client close, server side")
-        sys.exit()
+        return False
 
 
 class Orientation:
@@ -152,13 +151,18 @@ class HomeScreen:
         logging.debug("connection begin")
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.my_socket.connect((connectir_ip, connectir_port))
+        self.name = name
 
-        self.send(pickle.dumps([2, name.decode()]))
+        self.send(pickle.dumps([2, self.name.encode()]))
         lenoflen = int(self.my_socket.recv(4).decode())
         lenght = int(self.my_socket.recv(lenoflen).decode())
         data = self.my_socket.recv(lenght)
         data = pickle.loads(data)
-        self.player = data
+        print(data)
+        self.player = data[0]
+        ip, port = data[1]
+        self.ip = ip
+        self.port = port
 
         self.top = top
         top.geometry("600x450+504+171")
@@ -171,9 +175,6 @@ class HomeScreen:
         top.configure(highlightcolor="black")
         self.style = ttk.Style()
         self.Label4 = tk.Label(self.top)
-        self.ip = "127.0.0.1"
-        self.port = 5555
-        self.name = "none"
 
         self.Label1 = tk.Label(self.top)
         self.Label1.place(relx=0.05, rely=0.01, height=20, width=600)
@@ -228,8 +229,8 @@ class HomeScreen:
         self.Button1.configure(highlightbackground="#d9d9d9")
         self.Button1.configure(highlightcolor="black")
         self.Button1.configure(pady="0")
-        self.Button1.configure(text='''botton1''')
-        self.Button1.configure(command=self.quit())
+        self.Button1.configure(text='''ENTER GAME....''')
+        self.Button1.configure(command=self.Enter_game)
 
         self.Button2 = tk.Button(self.top)
         self.Button2.place(relx=0.8, rely=0.778, height=54, width=107)
@@ -245,19 +246,18 @@ class HomeScreen:
         self.Button2.configure(text='''quit''')
         self.Button2.configure(command=self.quit)
 
-    def quit(self, *args):
-        try:
-            self.send(pickle.dumps(99))
-        finally:
-            print('---------------quit----------------')
-            for arg in args:
-                print('another arg:', arg)
-            sys.stdout.flush()
-            sys.exit()
+    def quit(self):
+        self.send(pickle.dumps([3, self.name.encode()]))
+        print('---------------quit----------------')
+        sys.stdout.flush()
+        sys.exit()
 
     def send(self, data):
         self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
 
+    def Enter_game(self):
+        self.my_socket.close()
+        self.top.destroy()
 
 class Toplevel_mother:
     def __init__(self, top, headline, botton1, error_msg):
@@ -442,9 +442,9 @@ class Toplevel_mother:
             sys.exit()
 
 
-class Toplevel1(GUI.Toplevel_mother):
+class Toplevel1(Toplevel_mother):
     def __init__(self, top):
-        super().__init__(top, '''WELCOME TO SHOOTY SHOOTY GAME''', '''ENTER GAME!''',
+        super(Toplevel1, self).__init__(top, '''WELCOME TO SHOOTY SHOOTY GAME''', '''ENTER GAME!''',
                          '''INCORRECT NAME OR PASSWORD''')
         # self.root = top
 
@@ -470,9 +470,9 @@ class Toplevel1(GUI.Toplevel_mother):
         self.name = _w2.name
 
 
-class Toplevel2(GUI.Toplevel_mother):
+class Toplevel2(Toplevel_mother):
     def __init__(self, top, level1):
-        super().__init__(top, '''A NEW USER APPEAR!''', '''CREATE NEW USER!''',
+        super(Toplevel2, self).__init__(top, '''A NEW USER APPEAR!''', '''CREATE NEW USER!''',
                          '''not possible''')
         self.level1 = level1
 
@@ -523,7 +523,9 @@ class Toplevel2(GUI.Toplevel_mother):
     def entername(self):
         print("username = " + str(self.Entry1.get()))
         print("password = " + str(self.Entry2.get()))
-        self.send(pickle.dumps((1, self.Entry1.get(), self.Entry2.get())))
+        date = time.localtime()[0:-4]
+        update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
+        self.send(pickle.dumps((1, self.Entry1.get(), self.Entry2.get(), update_date, self.Entry3.get())))
 
         try:
             lenoflen = int(self.my_socket.recv(4).decode())
@@ -538,8 +540,6 @@ class Toplevel2(GUI.Toplevel_mother):
                 self.Entry3.delete(0, 'end')
             else:
                 self.name = str(self.Entry1.get())
-                self.ip = data[0].decode()
-                self.port = data[1]
                 self.my_socket.close()
                 self.delete_error()
                 self.back_to_level1()
@@ -567,10 +567,11 @@ def stay_screen(ip, port, name):
 
 def main():
     connector_ip, connector_port, name = entering()
-    ip, port = stay_screen(connector_ip, connector_port, name)
-    logging.basicConfig(level=logging.DEBUG)
-    me = ClientSide(ip, port, name)
-    me.game_run()
+    while True:
+        ip, port = stay_screen(connector_ip, connector_port, name)
+        logging.basicConfig(level=logging.DEBUG)
+        me = ClientSide(ip, port, name)
+        me.game_run()
 
 
 if __name__ == "__main__":
