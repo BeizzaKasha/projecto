@@ -57,19 +57,32 @@ class ServerSide:
         elif client_mov[0] == 2:  # new game server at wait
             self.game_servers[current_socket] = [client_mov[1], str(client_mov[2])[2:-1], client_mov[3]]
         elif client_mov[0] == 3:  # home screen
-            player = self.db.read(client_mov[1].decode())[0]
+            player = self.db.read(client_mov[1].decode())
             players_movement.append((current_socket, (player, self.pick_server())))
         elif client_mov[0] == 4:  # home screen quit
-            player = self.db.read(client_mov[1].decode())[0]
+            player = self.db.read(client_mov[1].decode())
             self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], False)
-            players_movement.append((current_socket, (99)))
+            players_movement.append((current_socket, 99))
+        elif client_mov[0] == 5:  # home screen requesting position
+            player = self.db.read(client_mov[1].decode())
+            position = self.find_position(player)
+            players_movement.append((current_socket, position))
         return players_movement
+
+    def find_position(self, player):
+        all_players = self.db.to_string()
+        position = len(all_players)
+        for other_player in all_players:
+            if player != other_player:
+                if player[4] >= other_player[4]:
+                    position -= 1
+        return position
 
     def check_connection(self, name, password):
         if not self.db.is_exist(name):
             return [False, 0]
         else:
-            player = self.db.read(name)[0]
+            player = self.db.read(name)
             if password == player[1] and player[6] == 0:
                 self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], True)
                 return [True]  # self.pick_server()
@@ -96,8 +109,10 @@ class ServerSide:
             return False
 
     def update_individual(self, client_player):
-        database_player = self.db.read(client_player[0])[0]
+        database_player = self.db.read(client_player[0])
+        name = database_player[0]
         password = database_player[1]
+        date = database_player[2]
         client_name = database_player[5]
         try:
             history = database_player[3]
@@ -109,12 +124,11 @@ class ServerSide:
             except:
                 points = float(history)
                 former_points = [history]
-            self.db.add(client_player[0], password, client_name, client_player[3],
-                        str(history) + "," + str(client_player[4]),
-                        (client_player[4] + points) / (len(former_points) + 1), client_player[5])
+            self.db.add(name, password, client_name, date,
+                        str(history) + "," + str(client_player[1]),
+                        (client_player[1] + points) / (len(former_points) + 1), True)
         except:
-            self.db.add(client_player[0], password, client_name, client_player[3], client_player[4], client_player[4],
-                        client_player[5])
+            self.db.add(name, password, client_name, date, client_player[1], client_player[1], True)
         finally:
             logging.info("update successful")
 
@@ -209,16 +223,12 @@ class Database:
     def read(self, name):
         self.mycursor.execute("SELECT * FROM realshit.players where PlayerName = '" + name + "'")
         myresult = self.mycursor.fetchall()
-        return myresult
+        return myresult[0]
 
     def to_string(self):
-        to_string = ""
         self.mycursor.execute("SELECT * FROM realshit.players")
         myresult = self.mycursor.fetchall()
-        for x in myresult:
-            to_string += str(x) + """
-"""
-        return to_string
+        return myresult
 
     def update_all(self, what, update):
         sql = "UPDATE help SET " + what + " = '" + update + "'"

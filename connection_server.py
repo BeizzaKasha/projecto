@@ -59,6 +59,10 @@ class ServerSide:
                         self.client_side.send(pickle.dumps([4, client_mov[1]]))
                         self.client_side.read()
                         self.client_quit(current_socket)
+                    elif client_mov[0] == 4:  # home screen requesting position
+                        self.client_side.send(pickle.dumps([5, client_mov[1]]))
+                        is_ok = self.client_side.read()
+                        players_movement.append((current_socket, is_ok))
             self.sending(players_movement)
             del players_movement
 

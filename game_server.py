@@ -37,7 +37,7 @@ class ClientSide:
     def make_message(self, game, space):
         stats = [0, space]
         print("sending")
-        date = time.localtime()[0:-4]
+        """date = time.localtime()[0:-4]
         update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
         for player in game.players:
             stats.append((player.name, player.password, "Nadav", update_date,
@@ -45,7 +45,9 @@ class ClientSide:
         for player in game.quiters:
             stats.append((player.name, player.password, "Nadav", update_date,
                           player.score / ((game.round_time * (10 / 1000)) / 60), False))
-            # ((game.game_time * (10 / 1000)) / 60) = time of round in minutes
+            # ((game.game_time * (10 / 1000)) / 60) = time of round in minutes"""
+        for player in game.players:
+            stats.append((player.name, player.score / ((game.round_time * (10 / 1000)) / 60)))
         return stats
 
     def run(self, game, space):
@@ -320,7 +322,6 @@ class Game:
             self.fire_wait = 120
             self.t_wait = 120
             self.name = "none"
-            self.password = "none"
             self.score = 0
             self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.angle,
                                            'red', "")

@@ -73,6 +73,7 @@ class ClientSide:
 
             self.built_all(self.game)
             pygame.display.flip()
+        pygame.quit()
 
     def built_all(self, game_obj):
         objects = []
@@ -154,10 +155,7 @@ class HomeScreen:
         self.name = name
 
         self.send(pickle.dumps([2, self.name.encode()]))
-        lenoflen = int(self.my_socket.recv(4).decode())
-        lenght = int(self.my_socket.recv(lenoflen).decode())
-        data = self.my_socket.recv(lenght)
-        data = pickle.loads(data)
+        data = self.read()
         print(data)
         self.player = data[0]
         ip, port = data[1]
@@ -187,11 +185,11 @@ class HomeScreen:
         self.Label1.configure(foreground="#000000")
         self.Label1.configure(highlightbackground="#d9d9d9")
         self.Label1.configure(highlightcolor="black")
-        self.Label1.configure(text='''WELCOME TO HOME SCREEN!''')
+        self.Label1.configure(text='''WELCOME TO HOME SCREEN ''' + str(self.player[5]))
         self.Label1.config(font=('Helvatical bold', 20))
 
         self.Label2 = tk.Label(self.top)
-        self.Label2.place(relx=0, rely=0.15, height=20, width=114)
+        self.Label2.place(relx=0, rely=0.15, height=20, width=200)
         self.Label2.configure(activebackground="#f9f9f9")
         self.Label2.configure(activeforeground="black")
         self.Label2.configure(anchor='w')
@@ -201,11 +199,11 @@ class HomeScreen:
         self.Label2.configure(foreground="#000000")
         self.Label2.configure(highlightbackground="#d9d9d9")
         self.Label2.configure(highlightcolor="black")
-        self.Label2.configure(text='''ENTER NAME''')
+        self.Label2.configure(text='''Your personal record: ''' + str(self.player[4]))
         self.Label2.config(font=('Helvatical bold', 10))
 
         self.Label3 = tk.Label(self.top)
-        self.Label3.place(relx=0, rely=0.4, height=20, width=130)
+        self.Label3.place(relx=0, rely=0.4, height=20, width=220)
         self.Label3.configure(activebackground="#f9f9f9")
         self.Label3.configure(activeforeground="black")
         self.Label3.configure(anchor='w')
@@ -215,8 +213,22 @@ class HomeScreen:
         self.Label3.configure(foreground="#000000")
         self.Label3.configure(highlightbackground="#d9d9d9")
         self.Label3.configure(highlightcolor="black")
-        self.Label3.configure(text='''ENTER PASSWORD''')
+        self.Label3.configure(text='''Your playing this game since ''' + self.player[2])
         self.Label3.config(font=('Helvatical bold', 10))
+
+        self.Label4 = tk.Label(self.top)
+        self.Label4.place(relx=0, rely=0.6, height=20, width=250)
+        self.Label4.configure(activebackground="#f9f9f9")
+        self.Label4.configure(activeforeground="black")
+        self.Label4.configure(anchor='w')
+        self.Label4.configure(background="#d9d9d9")
+        self.Label4.configure(compound='left')
+        self.Label4.configure(disabledforeground="#a3a3a3")
+        self.Label4.configure(foreground="#000000")
+        self.Label4.configure(highlightbackground="#d9d9d9")
+        self.Label4.configure(highlightcolor="black")
+        self.Label4.configure(text=self.position())
+        self.Label4.config(font=('Helvatical bold', 10))
 
         self.Button1 = tk.Button(self.top)
         self.Button1.place(relx=0.1, rely=0.733, height=60, width=115)
@@ -252,8 +264,23 @@ class HomeScreen:
         sys.stdout.flush()
         sys.exit()
 
+    def read(self):
+        lenoflen = int(self.my_socket.recv(4).decode())
+        lenght = int(self.my_socket.recv(lenoflen).decode())
+        data = self.my_socket.recv(lenght)
+        data = pickle.loads(data)
+        return data
+
     def send(self, data):
         self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
+
+    def position(self):
+        self.send(pickle.dumps([4, self.name.encode()]))
+        position = self.read()
+        if position == 1                        :
+            return "you are the best in the game!"
+        else:
+            return "your position the player ranking is " + str(position)
 
     def Enter_game(self):
         self.my_socket.close()
