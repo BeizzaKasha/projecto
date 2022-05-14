@@ -3,6 +3,7 @@ import select
 import logging
 import socket
 import pickle
+from Constants import constant
 
 logging.basicConfig(level=logging.INFO)
 
@@ -43,30 +44,27 @@ class ServerSide:
     def client_actions(self, current_socket):
         players_movement = []
         client_mov = self.client_mesege(current_socket)
-        print(client_mov)
-        if client_mov == 99:
+        # print(client_mov)
+        if client_mov == constant.QUITING:
             self.client_quit(current_socket)
-        elif client_mov[0] == 0:  # game_server
+        elif client_mov[0] == constant.GAMESERVER_UPDATE:  # game_server
             self.game_servers[current_socket][2] = client_mov[1]
             self.update_all(client_mov[2:])
             # print(client_mov)
             players_movement.append((current_socket, "I love..."))
-        elif client_mov[0] == 1:  # connection_server
-            is_ok = self.check_connection(client_mov[1], client_mov[2])
+        elif client_mov[0] == constant.USER_CONNECTING:  # user connects
+            is_ok = self.check_connection(client_mov[1], client_mov[2], client_mov[3], client_mov[4])
             players_movement.append((current_socket, is_ok))
-        elif client_mov[0] == 2:  # new game server at wait
+        elif client_mov[0] == constant.NEW_GAMESERVER:  # new game server at wait
             self.game_servers[current_socket] = [client_mov[1], str(client_mov[2])[2:-1], client_mov[3]]
-        elif client_mov[0] == 3:  # home screen
-            player = self.db.read(client_mov[1].decode())
-            players_movement.append((current_socket, (player, self.pick_server())))
-        elif client_mov[0] == 4:  # home screen quit
-            player = self.db.read(client_mov[1].decode())
-            self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], False)
-            players_movement.append((current_socket, 99))
-        elif client_mov[0] == 5:  # home screen requesting position
+        elif client_mov[0] == constant.HOMESCREEN_CONNECTS:  # home screen
             player = self.db.read(client_mov[1].decode())
             position = self.find_position(player)
-            players_movement.append((current_socket, position))
+            players_movement.append((current_socket, (player, self.pick_server(), position)))
+        elif client_mov[0] == constant.HOMESCREEN_QUITING:  # home screen quit
+            player = self.db.read(client_mov[1].decode())
+            self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], False)
+            players_movement.append((current_socket, constant.QUITING))
         return players_movement
 
     def find_position(self, player):
@@ -78,25 +76,35 @@ class ServerSide:
                     position -= 1
         return position
 
-    def check_connection(self, name, password):
-        if not self.db.is_exist(name):
-            return [False, 0]
-        else:
-            player = self.db.read(name)
-            if password == player[1] and player[6] == 0:
-                self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], True)
-                return [True]  # self.pick_server()
+    def check_connection(self, name, password, date, client_name):
+        if date != "" and client_name != "":
+            if self.db.is_exist(name):
+                return False
             else:
-                return [False, 1]
+                try:
+                    self.db.add(name, password, client_name, date, "", 0, True)
+                    return True
+                except Exception as e:
+                    return False
+        else:
+            if not self.db.is_exist(name):
+                return False
+            else:
+                player = self.db.read(name)
+                if password == player[1] and player[6] == 0:
+                    self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], True)
+                    return True  # self.pick_server()
+                else:
+                    return False
 
     def pick_server(self):
         minimum = 10
         selected_server = ["127.0.0.1".encode(), 5555]
         for server in self.game_servers:
-            print(self.game_servers[server])
+            # print(self.game_servers[server])
             if self.game_servers[server][2] < minimum:
                 selected_server = [self.game_servers[server][0], self.game_servers[server][1]]
-                minimum = self.game_servers[server][3]
+                minimum = self.game_servers[server][2]
         return selected_server
 
     def update_all(self, client_mov):
@@ -116,18 +124,22 @@ class ServerSide:
         client_name = database_player[5]
         try:
             history = database_player[3]
-            try:
-                former_points = str(history).split(",")
-                points = 0
-                for former_point in former_points:
-                    points += float(former_point)
-            except:
-                points = float(history)
-                former_points = [history]
-            self.db.add(name, password, client_name, date,
-                        str(history) + "," + str(client_player[1]),
-                        (client_player[1] + points) / (len(former_points) + 1), True)
-        except:
+            if history == "":
+                self.db.add(name, password, client_name, date, client_player[1], client_player[1], True)
+            else:
+                try:
+                    former_points = str(history).split(",")
+                    points = 0
+                    for former_point in former_points:
+                        points += float(former_point)
+                except:
+                    points = float(history)
+                    former_points = [history]
+                self.db.add(name, password, client_name, date,
+                            str(history) + "," + str(client_player[1]),
+                            (client_player[1] + points) / (len(former_points) + 1), True)
+        except Exception as e:
+            print(e)
             self.db.add(name, password, client_name, date, client_player[1], client_player[1], True)
         finally:
             logging.info("update successful")
@@ -255,7 +267,6 @@ def main():
     ds = ServerSide()
 
     """db.add('nadav', 'qwerty00', 99)
-
     print(db.to_string())
     print(db.get_winner()[0::2])"""
 

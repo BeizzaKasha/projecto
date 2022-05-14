@@ -5,6 +5,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import sys
 import time
+from Constants import constant
 
 import pygame
 from pygame.locals import (
@@ -16,8 +17,6 @@ from pygame.locals import (
     KEYDOWN,
     QUIT,
 )
-
-import GUI
 
 
 class ClientSide:
@@ -49,7 +48,6 @@ class ClientSide:
             self.name = name
             self.font = pygame.font.Font('freesansbold.ttf', int(angle))
             self.text = self.font.render(self.name, True, self.color, (0, 0, 0))
-            # self.text.set_alpha(200)
             self.text.set_colorkey((0, 0, 0))
 
     def game_run(self):
@@ -154,11 +152,12 @@ class HomeScreen:
         self.my_socket.connect((connectir_ip, connectir_port))
         self.name = name
 
-        self.send(pickle.dumps([2, self.name.encode()]))
+        self.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, self.name.encode()]))
         data = self.read()
         print(data)
         self.player = data[0]
         ip, port = data[1]
+        self.position = data[2]
         self.ip = ip
         self.port = port
 
@@ -227,7 +226,7 @@ class HomeScreen:
         self.Label4.configure(foreground="#000000")
         self.Label4.configure(highlightbackground="#d9d9d9")
         self.Label4.configure(highlightcolor="black")
-        self.Label4.configure(text=self.position())
+        self.Label4.configure(text=self.position_placer(self.position))
         self.Label4.config(font=('Helvatical bold', 10))
 
         self.Button1 = tk.Button(self.top)
@@ -259,7 +258,7 @@ class HomeScreen:
         self.Button2.configure(command=self.quit)
 
     def quit(self):
-        self.send(pickle.dumps([3, self.name.encode()]))
+        self.send(pickle.dumps([constant.HOMESCREEN_QUITING, self.name.encode()]))
         print('---------------quit----------------')
         sys.stdout.flush()
         sys.exit()
@@ -274,10 +273,8 @@ class HomeScreen:
     def send(self, data):
         self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
 
-    def position(self):
-        self.send(pickle.dumps([4, self.name.encode()]))
-        position = self.read()
-        if position == 1                        :
+    def position_placer(self, position):
+        if position == 1:
             return "you are the best in the game!"
         else:
             return "your position the player ranking is " + str(position)
@@ -285,6 +282,7 @@ class HomeScreen:
     def Enter_game(self):
         self.my_socket.close()
         self.top.destroy()
+
 
 class Toplevel_mother:
     def __init__(self, top, headline, botton1, error_msg):
@@ -433,7 +431,7 @@ class Toplevel_mother:
 
     def quit(self, *args):
         try:
-            self.send(pickle.dumps(99))
+            self.send(pickle.dumps(constant.QUITING))
         finally:
             print('---------------quit----------------')
             for arg in args:
@@ -447,7 +445,7 @@ class Toplevel_mother:
     def entername(self):
         print("username = " + str(self.Entry1.get()))
         print("password = " + str(self.Entry2.get()))
-        self.send(pickle.dumps((0, self.Entry1.get(), self.Entry2.get())))
+        self.send(pickle.dumps((constant.USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), "", "")))
 
         try:
             lenoflen = int(self.my_socket.recv(4).decode())
@@ -472,7 +470,7 @@ class Toplevel_mother:
 class Toplevel1(Toplevel_mother):
     def __init__(self, top):
         super(Toplevel1, self).__init__(top, '''WELCOME TO SHOOTY SHOOTY GAME''', '''ENTER GAME!''',
-                         '''INCORRECT NAME OR PASSWORD''')
+                                        '''INCORRECT NAME OR PASSWORD''')
         # self.root = top
 
         self.Button3 = tk.Button(self.top)
@@ -493,14 +491,21 @@ class Toplevel1(Toplevel_mother):
         self.top.withdraw()
         root = tk.Tk()
         root.protocol('WM_DELETE_WINDOW', root.destroy)
-        _w2 = Toplevel2(root, self.top)
+        _w2 = Toplevel2(root, self)
         self.name = _w2.name
+
+    def level2_got_in(self, name):
+        self.top.deiconify()
+        self.name = name
+        if name != "":
+            self.my_socket.close()
+            self.top.destroy()
 
 
 class Toplevel2(Toplevel_mother):
     def __init__(self, top, level1):
         super(Toplevel2, self).__init__(top, '''A NEW USER APPEAR!''', '''CREATE NEW USER!''',
-                         '''not possible''')
+                                        '''not possible''')
         self.level1 = level1
 
         self.Button3 = tk.Button(self.top)
@@ -544,15 +549,17 @@ class Toplevel2(Toplevel_mother):
         self.Label5.config(font=('Helvatical bold', 10))
 
     def back_to_level1(self):
-        self.level1.deiconify()
+        print(self.name)
         self.top.destroy()
+        self.level1.level2_got_in(self.name)
 
     def entername(self):
         print("username = " + str(self.Entry1.get()))
         print("password = " + str(self.Entry2.get()))
         date = time.localtime()[0:-4]
         update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
-        self.send(pickle.dumps((1, self.Entry1.get(), self.Entry2.get(), update_date, self.Entry3.get())))
+        self.send(pickle.dumps(
+            (constant.NEW_USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), update_date, self.Entry3.get())))
 
         try:
             lenoflen = int(self.my_socket.recv(4).decode())

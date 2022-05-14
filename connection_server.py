@@ -2,6 +2,7 @@ import select
 import logging
 import socket
 import pickle
+from Constants import constant
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -37,32 +38,30 @@ class ServerSide:
                     client_mov = self.client_mesege(current_socket)
                     if client_mov == 99:
                         self.client_quit(current_socket)
-                    elif client_mov[0] == 0:  # user connect
+                    elif client_mov[0] == constant.USER_CONNECTING:  # user connect
                         is_ok = self.client_side.comunicate(client_mov[1:])
-                        if not is_ok[0]:
-                            is_ok = False
-                        else:
-                            is_ok = True
+                        """if is_ok:
+                            if not is_ok[0]:
+                                is_ok = False
+                            else:
+                                is_ok = True"""
                         players_movement.append((current_socket, is_ok))
-                    elif client_mov[0] == 1:  # new user
+                    elif client_mov[0] == constant.NEW_USER_CONNECTING:  # new user
                         is_ok = self.client_side.comunicate(client_mov[1:])
-                        if is_ok[1] == 0:
-                            is_ok = True
-                        else:
-                            is_ok = False
+                        """if not is_ok:
+                            if is_ok[1] == 0:
+                                is_ok = True
+                            else:
+                                is_ok = False"""
                         players_movement.append((current_socket, is_ok))
-                    elif client_mov[0] == 2:  # home screen
-                        self.client_side.send(pickle.dumps([3, client_mov[1]]))
+                    elif client_mov[0] == constant.HOMESCREEN_CONNECTS:  # home screen
+                        self.client_side.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, client_mov[1]]))
                         is_ok = self.client_side.read()
                         players_movement.append((current_socket, is_ok))
-                    elif client_mov[0] == 3:  # home screen quiting
-                        self.client_side.send(pickle.dumps([4, client_mov[1]]))
+                    elif client_mov[0] == constant.HOMESCREEN_QUITING:  # home screen quiting
+                        self.client_side.send(pickle.dumps([constant.HOMESCREEN_QUITING, client_mov[1]]))
                         self.client_side.read()
                         self.client_quit(current_socket)
-                    elif client_mov[0] == 4:  # home screen requesting position
-                        self.client_side.send(pickle.dumps([5, client_mov[1]]))
-                        is_ok = self.client_side.read()
-                        players_movement.append((current_socket, is_ok))
             self.sending(players_movement)
             del players_movement
 
@@ -73,7 +72,7 @@ class ServerSide:
 
     def make_messages(self, players_movement):
         for client_data in players_movement:
-            print(client_data[1])
+            # print(client_data[1])
             self.messages_to_send.append((client_data[0], pickle.dumps(client_data[1])))
 
     def client_mesege(self, current_socket):
@@ -131,16 +130,16 @@ class ClientSide:
         except Exception as e:
             logging.error(e)
 
-    def make_message(self, name, password):
+    def make_message(self, name, password, date, client_name):
         if name != "" and password != "":
-            return [1, name, password]
+            return [constant.USER_CONNECTING, name, password, date, client_name]
         else:
             print("not sending")
-            return 0
+            return constant.QUITING
 
     def comunicate(self, client_mov):
-        message = self.make_message(client_mov[0], client_mov[1])
-        if message[0] == 1:
+        message = self.make_message(client_mov[0], client_mov[1], client_mov[2], client_mov[3])
+        if message[0] == constant.USER_CONNECTING:
             self.send(pickle.dumps(message))
             rtr = self.read()
             return rtr

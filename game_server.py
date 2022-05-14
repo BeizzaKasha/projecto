@@ -3,7 +3,7 @@ import logging
 import socket
 import pickle
 import sys
-import time
+from Constants import constant
 
 import pygame
 import random
@@ -18,7 +18,7 @@ class ClientSide:
         ip = "127.0.0.1"
         port = 6666
         self.my_socket.connect((ip, port))
-        self.send(pickle.dumps([2, server_port, server_ip.encode(),  max_clients]))
+        self.send(pickle.dumps([constant.NEW_GAMESERVER, server_port, server_ip.encode(),  max_clients]))
         logging.debug("client side connected...")
 
     def send(self, data):
@@ -35,7 +35,7 @@ class ClientSide:
             logging.error(e)
 
     def make_message(self, game, space):
-        stats = [0, space]
+        stats = [constant.GAMESERVER_UPDATE, space]
         print("sending")
         """date = time.localtime()[0:-4]
         update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
@@ -60,6 +60,7 @@ class ClientSide:
         self.send(pickle.dumps(stats))
         self.read()
         self.send(pickle.dumps(99))
+        self.read()
 
 
 class server:
@@ -208,11 +209,13 @@ class server:
             pygame.time.delay(10)
             self.game.game_time -= 1
 
+            if self.game.game_time == 0:
+                self.client_side.run(self.game, self.max_clients - self.number_of_client)
+
             if self.game.game_time <= 0:
                 self.game.leaderboard.winner(self.game.players)
 
             if self.game.game_time == -300:
-                self.client_side.run(self.game, self.max_clients - self.number_of_client)
                 running = False
 
             self.sending(player_movement)
