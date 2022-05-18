@@ -139,6 +139,75 @@ class Orientation:
         self.color = color
 
 
+class IpCatcher:
+    def __init__(self, top):
+        _bgcolor = '#d9d9d9'  # X11 color: 'gray85'
+        _fgcolor = '#000000'  # X11 color: 'black'
+        _compcolor = '#d9d9d9'  # X11 color: 'gray85'
+        _ana1color = '#d9d9d9'  # X11 color: 'gray85'
+        _ana2color = '#ececec'  # Closest X11 color: 'gray92'
+        self.ip = ""
+
+        self.top = top
+        top.geometry("600x450+504+171")
+        top.minsize(120, 1)
+        top.maxsize(804, 481)
+        top.resizable(1, 1)
+        top.title("Enter to game")
+        top.configure(background="#d9d9d9")
+        top.configure(highlightbackground="#d9d9d9")
+        top.configure(highlightcolor="black")
+        self.style = ttk.Style()
+
+        self.Label1 = tk.Label(self.top)
+        self.Label1.place(relx=0.05, rely=0.01, height=20, width=600)
+        self.Label1.configure(activebackground="#f9f9f9")
+        self.Label1.configure(activeforeground="black")
+        self.Label1.configure(anchor='w')
+        self.Label1.configure(background="#d9d9d9")
+        self.Label1.configure(compound='center')
+        self.Label1.configure(disabledforeground="#a3a3a3")
+        self.Label1.configure(foreground="#000000")
+        self.Label1.configure(highlightbackground="#d9d9d9")
+        self.Label1.configure(highlightcolor="black")
+        self.Label1.configure(text="ENTER SERVER ip")
+        self.Label1.config(font=('Helvatical bold', 20))
+
+        self.Entry1 = tk.Entry(self.top)
+        self.Entry1.place(relx=0.01, rely=0.25, height=40, relwidth=0.307)
+        self.Entry1.configure(background="white")
+        self.Entry1.configure(disabledforeground="#a3a3a3")
+        self.Entry1.configure(font="TkFixedFont")
+        self.Entry1.configure(foreground="#000000")
+        self.Entry1.configure(highlightbackground="#d9d9d9")
+        self.Entry1.configure(highlightcolor="black")
+        self.Entry1.configure(insertbackground="black")
+        self.Entry1.configure(selectbackground="blue")
+        self.Entry1.configure(selectforeground="white")
+
+        self.Button1 = tk.Button(self.top)
+        self.Button1.place(relx=0.1, rely=0.733, height=60, width=115)
+        self.Button1.configure(activebackground="#ececec")
+        self.Button1.configure(activeforeground="#000000")
+        self.Button1.configure(background="#d9d9d9")
+        self.Button1.configure(compound='left')
+        self.Button1.configure(disabledforeground="#a3a3a3")
+        self.Button1.configure(foreground="#000000")
+        self.Button1.configure(highlightbackground="#d9d9d9")
+        self.Button1.configure(highlightcolor="black")
+        self.Button1.configure(pady="0")
+        self.Button1.configure(text="ENTER")
+        self.Button1.configure(command=self.enter_ip)
+
+        self.style.configure('TSizegrip', background=_bgcolor)
+        self.TSizegrip1 = ttk.Sizegrip(self.top)
+        self.TSizegrip1.place(anchor='se', relx=1.0, rely=1.0)
+
+    def enter_ip(self):
+        self.ip = str(self.Entry1.get())
+        self.top.destroy()
+
+
 class HomeScreen:
     def __init__(self, top, connectir_ip, connectir_port, name):
         _bgcolor = '#d9d9d9'  # X11 color: 'gray85'
@@ -160,6 +229,7 @@ class HomeScreen:
         self.position = data[2]
         self.ip = ip
         self.port = port
+        print(data)
 
         self.top = top
         top.geometry("600x450+504+171")
@@ -257,6 +327,10 @@ class HomeScreen:
         self.Button2.configure(text='''quit''')
         self.Button2.configure(command=self.quit)
 
+        self.style.configure('TSizegrip', background=_bgcolor)
+        self.TSizegrip1 = ttk.Sizegrip(self.top)
+        self.TSizegrip1.place(anchor='se', relx=1.0, rely=1.0)
+
     def quit(self):
         self.send(pickle.dumps([constant.HOMESCREEN_QUITING, self.name.encode()]))
         print('---------------quit----------------')
@@ -284,8 +358,8 @@ class HomeScreen:
         self.top.destroy()
 
 
-class Toplevel_mother:
-    def __init__(self, top, headline, botton1, error_msg):
+class TopLevelMother:
+    def __init__(self, top, headline, botton1, error_msg, ip):
         _bgcolor = '#d9d9d9'  # X11 color: 'gray85'
         _fgcolor = '#000000'  # X11 color: 'black'
         _compcolor = '#d9d9d9'  # X11 color: 'gray85'
@@ -294,9 +368,13 @@ class Toplevel_mother:
 
         logging.debug("connection begin")
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connector_ip = "127.0.0.1"
+        self.connector_ip = ip
         self.connector_port = 7777
-        self.my_socket.connect((self.connector_ip, self.connector_port))
+        try:
+            self.my_socket.connect((self.connector_ip, self.connector_port))
+        except Exception as e:
+            print(e)
+            sys.exit()
         logging.info("connect to server at {0} with port {1}".format(self.connector_ip, self.connector_port))
 
         self.top = top
@@ -363,6 +441,7 @@ class Toplevel_mother:
         self.Entry2.configure(highlightcolor="black")
         self.Entry2.configure(insertbackground="black")
         self.Entry2.configure(selectbackground="blue")
+        self.Entry2.configure(show="quq")
         self.Entry2.configure(selectforeground="white")
 
         self.Label3 = tk.Label(self.top)
@@ -467,11 +546,11 @@ class Toplevel_mother:
             sys.exit()
 
 
-class Toplevel1(Toplevel_mother):
-    def __init__(self, top):
-        super(Toplevel1, self).__init__(top, '''WELCOME TO SHOOTY SHOOTY GAME''', '''ENTER GAME!''',
-                                        '''INCORRECT NAME OR PASSWORD''')
-        # self.root = top
+class TopLevel1(TopLevelMother):
+    def __init__(self, top, ip):
+        super(TopLevel1, self).__init__(top, '''WELCOME TO SHOOTY SHOOTY GAME''', '''ENTER GAME!''',
+                                        '''INCORRECT NAME OR PASSWORD''', ip)
+        self.ip = ip
 
         self.Button3 = tk.Button(self.top)
         self.Button3.place(relx=0.8, rely=0.478, height=54, width=110)
@@ -491,7 +570,7 @@ class Toplevel1(Toplevel_mother):
         self.top.withdraw()
         root = tk.Tk()
         root.protocol('WM_DELETE_WINDOW', root.destroy)
-        _w2 = Toplevel2(root, self)
+        _w2 = TopLevel2(root, self, self.ip)
         self.name = _w2.name
 
     def level2_got_in(self, name):
@@ -502,10 +581,10 @@ class Toplevel1(Toplevel_mother):
             self.top.destroy()
 
 
-class Toplevel2(Toplevel_mother):
-    def __init__(self, top, level1):
-        super(Toplevel2, self).__init__(top, '''A NEW USER APPEAR!''', '''CREATE NEW USER!''',
-                                        '''not possible''')
+class TopLevel2(TopLevelMother):
+    def __init__(self, top, level1, ip):
+        super(TopLevel2, self).__init__(top, '''A NEW USER APPEAR!''', '''CREATE NEW USER!''',
+                                        '''not possible''', ip)
         self.level1 = level1
 
         self.Button3 = tk.Button(self.top)
@@ -582,10 +661,19 @@ class Toplevel2(Toplevel_mother):
             self.back_to_level1()
 
 
-def entering():
+def get_ip():
     root = tk.Tk()
     root.protocol('WM_DELETE_WINDOW', root.destroy)
-    _w1 = Toplevel1(root)
+    start_tk = IpCatcher(root)
+    root.mainloop()
+    return start_tk.ip
+
+
+def entering():
+    ip = get_ip()
+    root = tk.Tk()
+    root.protocol('WM_DELETE_WINDOW', root.destroy)
+    _w1 = TopLevel1(root, ip)
     # root.after(1000, _w1.loop, root)
     root.mainloop()
     return _w1.connector_ip, _w1.connector_port, _w1.name

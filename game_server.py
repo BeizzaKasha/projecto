@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG)
 class ClientSide:
     def __init__(self, server_port, server_ip,  max_clients):
         self.my_socket = socket.socket()
-        ip = "127.0.0.1"
+        ip = str(socket.gethostname())
         port = 6666
         self.my_socket.connect((ip, port))
         self.send(pickle.dumps([constant.NEW_GAMESERVER, server_port, server_ip.encode(),  max_clients]))
@@ -67,12 +67,12 @@ class server:
     def __init__(self):
         self.game = Game()
         self.SERVER_PORT = 5555
-        self.SERVER_IP = '0.0.0.0'
+        self.SERVER_IP = str(socket.gethostname())
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
         self.server_socket.listen()
-        self.max_clients = 10
+        self.max_clients = 5
         self.client_side = ClientSide(self.SERVER_PORT, self.SERVER_IP, self.max_clients)
         self.client_sockets = []
         self.messages_to_send = []

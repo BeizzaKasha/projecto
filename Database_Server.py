@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 class ServerSide:
     def __init__(self):
         self.SERVER_PORT = 6666
-        self.SERVER_IP = '0.0.0.0'
+        self.SERVER_IP = str(socket.gethostname())
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
@@ -101,7 +101,7 @@ class ServerSide:
         minimum = 10
         selected_server = ["127.0.0.1".encode(), 5555]
         for server in self.game_servers:
-            # print(self.game_servers[server])
+            print(self.game_servers[server])
             if self.game_servers[server][2] < minimum:
                 selected_server = [self.game_servers[server][0], self.game_servers[server][1]]
                 minimum = self.game_servers[server][2]
@@ -189,13 +189,32 @@ class Database:
         self.mydb = mysql.connector.connect(
             host="localhost",
             user="root",
-            password="root"
+            password="root",
+            database="shootydb"
         )
-
         self.mycursor = self.mydb.cursor()
+        try:
+            is_exist = False
+            self.mycursor.execute("SHOW TABLES")
+
+            for x in self.mycursor:
+                # print(str(x)[2:-3])
+                if str(x)[2:-3] == "players":
+                    is_exist = True
+            if not is_exist:
+                self.create_db()
+        except:
+            self.create_db()
+
+    def create_db(self):
+        self.mycursor.execute("CREATE DATABASE shootydb")
+        self.mycursor.execute("CREATE TABLE shootydb.players (PlayerName VARCHAR(255) primary key not null,"
+                              " PlayerPassword VARCHAR(255) not null, CreationTime VARCHAR(255) not null,"
+                              " GameHistory VARCHAR(255) not null, PersonalRecord double not null,"
+                              " ClientName VARCHAR(255) not null, IsConnect boolean not null)")
 
     def is_exist(self, name):
-        sql = "SELECT * FROM realshit.players WHERE PlayerName = '" + name + "'"
+        sql = "SELECT * FROM shootydb.players WHERE PlayerName = '" + name + "'"
         self.mycursor.execute(sql)
         place = self.mycursor.fetchall()
         if len(place) == 0:
@@ -208,8 +227,8 @@ class Database:
         try:
             if self.is_exist(PlayerName):
                 self.delete(PlayerName)
-            sql = "INSERT INTO realshit.players " \
-                  "(PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord, is_connect)" \
+            sql = "INSERT INTO shootydb.players " \
+                  "(PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord, IsConnect)" \
                   " VALUES (%s, %s, %s, %s, %s, %s, %s)"
             val = (PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord, is_connect)
             print(val)
@@ -224,7 +243,7 @@ class Database:
     def delete(self, name):
         try:
             myresult = self.read(name)
-            sql = "DELETE FROM realshit.players WHERE PlayerName = '" + name + "'"
+            sql = "DELETE FROM shootydb.players WHERE PlayerName = '" + name + "'"
             self.mycursor.execute(sql)
             self.mydb.commit()
             return myresult  # if delete successfully return what was deleted
@@ -233,12 +252,12 @@ class Database:
             return False  # if doesn't work return False
 
     def read(self, name):
-        self.mycursor.execute("SELECT * FROM realshit.players where PlayerName = '" + name + "'")
+        self.mycursor.execute("SELECT * FROM shootydb.players where PlayerName = '" + name + "'")
         myresult = self.mycursor.fetchall()
         return myresult[0]
 
     def to_string(self):
-        self.mycursor.execute("SELECT * FROM realshit.players")
+        self.mycursor.execute("SELECT * FROM shootydb.players")
         myresult = self.mycursor.fetchall()
         return myresult
 
@@ -249,7 +268,7 @@ class Database:
 
     def get_names(self):
         names = []
-        self.mycursor.execute("SELECT * FROM realshit.players")
+        self.mycursor.execute("SELECT * FROM shootydb.players")
         myresult = self.mycursor.fetchall()
         for x in myresult:
             names.append(x)
@@ -265,11 +284,6 @@ class Database:
 
 def main():
     ds = ServerSide()
-
-    """db.add('nadav', 'qwerty00', 99)
-    print(db.to_string())
-    print(db.get_winner()[0::2])"""
-
     ds.run()
 
 

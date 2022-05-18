@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 class ServerSide:
     def __init__(self):
         self.SERVER_PORT = 7777
-        self.SERVER_IP = '0.0.0.0'
+        self.SERVER_IP = str(socket.gethostname())
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
@@ -111,7 +111,7 @@ class ServerSide:
 class ClientSide:
     def __init__(self):
         self.my_socket = socket.socket()
-        ip = "127.0.0.1"
+        ip = socket.gethostname()
         port = 6666
         self.my_socket.connect((ip, port))
         logging.debug("client side connected...")
