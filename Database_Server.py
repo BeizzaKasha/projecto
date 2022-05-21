@@ -79,27 +79,33 @@ class ServerSide:
     def check_connection(self, name, password, date, client_name):
         if date != "" and client_name != "":
             if self.db.is_exist(name):
-                return False
+                return [False]
             else:
                 try:
                     self.db.add(name, password, client_name, date, "", 0, True)
-                    return True
+                    if not self.pick_server():
+                        return [True, True]
+                    else:
+                        return [True, False]
                 except Exception as e:
-                    return False
+                    return [False]
         else:
             if not self.db.is_exist(name):
-                return False
+                return [False]
             else:
                 player = self.db.read(name)
                 if password == player[1] and player[6] == 0:
                     self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], True)
-                    return True  # self.pick_server()
+                    if not self.pick_server():
+                        return [True, True]
+                    else:
+                        return [True, False]
                 else:
-                    return False
+                    return [False]
 
     def pick_server(self):
         minimum = 10
-        selected_server = ["127.0.0.1".encode(), 5555]
+        selected_server = False
         for server in self.game_servers:
             print(self.game_servers[server])
             if self.game_servers[server][2] < minimum:
@@ -186,12 +192,22 @@ class ServerSide:
 
 class Database:
     def __init__(self):
-        self.mydb = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="root",
-            database="shootydb"
-        )
+        self.mydb = ""
+        self.mycursor = ""
+        self.open_sequence()
+
+    def open_sequence(self):
+        try:
+            self.mydb = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="root",
+                database="shootydb"
+            )
+        except:
+            self.create_db()
+            return
+
         self.mycursor = self.mydb.cursor()
         try:
             is_exist = False
@@ -203,8 +219,10 @@ class Database:
                     is_exist = True
             if not is_exist:
                 self.create_db()
+                return
         except:
             self.create_db()
+            return
 
     def create_db(self):
         self.mycursor.execute("CREATE DATABASE shootydb")

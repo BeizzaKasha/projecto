@@ -6,6 +6,8 @@ import tkinter.ttk as ttk
 import sys
 import time
 from Constants import constant
+import game_server
+import subprocess
 
 import pygame
 from pygame.locals import (
@@ -23,6 +25,7 @@ class ClientSide:
     def __init__(self, ip, port, name):
         logging.debug("client begin")
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print((ip, port))
         self.my_socket.connect((ip, port))
         logging.info("connect to server at {0} with port {1}".format(ip, port))
         pygame.init()
@@ -150,8 +153,8 @@ class IpCatcher:
 
         self.top = top
         top.geometry("600x450+504+171")
-        top.minsize(120, 1)
-        top.maxsize(804, 481)
+        top.minsize(80, 40)
+        top.maxsize(404, 241)
         top.resizable(1, 1)
         top.title("Enter to game")
         top.configure(background="#d9d9d9")
@@ -229,7 +232,6 @@ class HomeScreen:
         self.position = data[2]
         self.ip = ip
         self.port = port
-        print(data)
 
         self.top = top
         top.geometry("600x450+504+171")
@@ -272,7 +274,7 @@ class HomeScreen:
         self.Label2.config(font=('Helvatical bold', 10))
 
         self.Label3 = tk.Label(self.top)
-        self.Label3.place(relx=0, rely=0.4, height=20, width=220)
+        self.Label3.place(relx=0, rely=0.4, height=20, width=250)
         self.Label3.configure(activebackground="#f9f9f9")
         self.Label3.configure(activeforeground="black")
         self.Label3.configure(anchor='w')
@@ -526,24 +528,26 @@ class TopLevelMother:
         print("password = " + str(self.Entry2.get()))
         self.send(pickle.dumps((constant.USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), "", "")))
 
-        try:
-            lenoflen = int(self.my_socket.recv(4).decode())
-            lenght = int(self.my_socket.recv(lenoflen).decode())
-            data = self.my_socket.recv(lenght)
-            data = pickle.loads(data)
-            # print(data)
-            if not data:
-                self.print_error()
-                self.Entry1.delete(0, 'end')
-                self.Entry2.delete(0, 'end')
-            else:
-                self.name = str(self.Entry1.get())
-                self.my_socket.close()
-                self.delete_error()
-                self.top.destroy()
-        except Exception as e:
+        # try:
+        lenoflen = int(self.my_socket.recv(4).decode())
+        lenght = int(self.my_socket.recv(lenoflen).decode())
+        data = self.my_socket.recv(lenght)
+        data = pickle.loads(data)
+        # print(data)
+        if not data[0]:
+            self.print_error()
+            self.Entry1.delete(0, 'end')
+            self.Entry2.delete(0, 'end')
+        else:
+            if data[1]:
+                open_server()
+            self.name = str(self.Entry1.get())
+            self.my_socket.close()
+            self.delete_error()
+            self.top.destroy()
+        """except Exception as e:
             print(str(e) + " <---error")
-            sys.exit()
+            sys.exit()"""
 
 
 class TopLevel1(TopLevelMother):
@@ -652,6 +656,8 @@ class TopLevel2(TopLevelMother):
                 self.Entry2.delete(0, 'end')
                 self.Entry3.delete(0, 'end')
             else:
+                if data[1]:
+                    open_server()
                 self.name = str(self.Entry1.get())
                 self.my_socket.close()
                 self.delete_error()
@@ -659,6 +665,10 @@ class TopLevel2(TopLevelMother):
         except Exception as e:
             print(str(e) + " <---error")
             self.back_to_level1()
+
+
+def open_server():
+    subprocess.run(game_server.starting())
 
 
 def get_ip():
@@ -690,7 +700,7 @@ def stay_screen(ip, port, name):
 def main():
     connector_ip, connector_port, name = entering()
     while True:
-        ip, port = stay_screen(connector_ip, connector_port, name)
+        port, ip = stay_screen(connector_ip, connector_port, name)
         logging.basicConfig(level=logging.DEBUG)
         me = ClientSide(ip, port, name)
         me.game_run()

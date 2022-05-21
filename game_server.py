@@ -13,12 +13,12 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class ClientSide:
-    def __init__(self, server_port, server_ip,  max_clients):
+    def __init__(self, server_port, server_ip, max_clients):
         self.my_socket = socket.socket()
         ip = str(socket.gethostname())
         port = 6666
         self.my_socket.connect((ip, port))
-        self.send(pickle.dumps([constant.NEW_GAMESERVER, server_port, server_ip.encode(),  max_clients]))
+        self.send(pickle.dumps([constant.NEW_GAMESERVER, server_port, server_ip.encode(), max_clients]))
         logging.debug("client side connected...")
 
     def send(self, data):
@@ -78,7 +78,7 @@ class server:
         self.messages_to_send = []
         self.number_of_client = 0
         self.players_conection = {}
-        self.active = False # subprocess.popen
+        self.active = False  # subprocess.popen
 
     def game_maker(self):
         while True:
@@ -486,10 +486,14 @@ class Orientation:
         self.name = name
 
 
-def main():
+def starting():
     pygame.init()
     me = server()
     me.game_maker()
+
+
+def main():
+    starting()
 
 
 if __name__ == "__main__":
