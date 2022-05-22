@@ -361,7 +361,7 @@ class HomeScreen:
 
 
 class TopLevelMother:
-    def __init__(self, top, headline, botton1, error_msg, ip):
+    def __init__(self, top, headline, botton1, error_msg, ip, is_connect):
         _bgcolor = '#d9d9d9'  # X11 color: 'gray85'
         _fgcolor = '#000000'  # X11 color: 'black'
         _compcolor = '#d9d9d9'  # X11 color: 'gray85'
@@ -370,14 +370,19 @@ class TopLevelMother:
 
         logging.debug("connection begin")
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connector_ip = ip
-        self.connector_port = 7777
-        try:
-            self.my_socket.connect((self.connector_ip, self.connector_port))
-        except Exception as e:
-            print(e)
-            sys.exit()
-        logging.info("connect to server at {0} with port {1}".format(self.connector_ip, self.connector_port))
+        if is_connect != 0:
+            self.database_ip = ip
+            self.connector_ip = ip
+            self.connector_port = 7777
+            try:
+                self.my_socket.connect((self.connector_ip, self.connector_port))
+            except Exception as e:
+                print(e)
+                sys.exit()
+            logging.info("connect to server at {0} with port {1}".format(self.connector_ip, self.connector_port))
+        else:
+            self.my_socket = ip
+            self.database_ip = self.my_socket.getsockname()
 
         self.top = top
         top.geometry("600x450+504+171")
@@ -528,32 +533,31 @@ class TopLevelMother:
         print("password = " + str(self.Entry2.get()))
         self.send(pickle.dumps((constant.USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), "", "")))
 
-        # try:
-        lenoflen = int(self.my_socket.recv(4).decode())
-        lenght = int(self.my_socket.recv(lenoflen).decode())
-        data = self.my_socket.recv(lenght)
-        data = pickle.loads(data)
-        # print(data)
-        if not data[0]:
-            self.print_error()
-            self.Entry1.delete(0, 'end')
-            self.Entry2.delete(0, 'end')
-        else:
-            if data[1]:
-                open_server()
-            self.name = str(self.Entry1.get())
-            self.my_socket.close()
-            self.delete_error()
-            self.top.destroy()
-        """except Exception as e:
+        try:
+            lenoflen = int(self.my_socket.recv(4).decode())
+            lenght = int(self.my_socket.recv(lenoflen).decode())
+            data = self.my_socket.recv(lenght)
+            data = pickle.loads(data)
+            if not data[0]:
+                self.print_error()
+                self.Entry1.delete(0, 'end')
+                self.Entry2.delete(0, 'end')
+            else:
+                if data[1]:
+                    open_server(self.database_ip)
+                self.name = str(self.Entry1.get())
+                self.my_socket.close()
+                self.delete_error()
+                self.top.destroy()
+        except Exception as e:
             print(str(e) + " <---error")
-            sys.exit()"""
+            sys.exit()
 
 
 class TopLevel1(TopLevelMother):
     def __init__(self, top, ip):
         super(TopLevel1, self).__init__(top, '''WELCOME TO SHOOTY SHOOTY GAME''', '''ENTER GAME!''',
-                                        '''INCORRECT NAME OR PASSWORD''', ip)
+                                        '''INCORRECT NAME OR PASSWORD''', ip, 1)
         self.ip = ip
 
         self.Button3 = tk.Button(self.top)
@@ -574,7 +578,7 @@ class TopLevel1(TopLevelMother):
         self.top.withdraw()
         root = tk.Tk()
         root.protocol('WM_DELETE_WINDOW', root.destroy)
-        _w2 = TopLevel2(root, self, self.ip)
+        _w2 = TopLevel2(root, self, self.my_socket, self.database_ip)
         self.name = _w2.name
 
     def level2_got_in(self, name):
@@ -586,9 +590,9 @@ class TopLevel1(TopLevelMother):
 
 
 class TopLevel2(TopLevelMother):
-    def __init__(self, top, level1, ip):
+    def __init__(self, top, level1, ip, database_ip):
         super(TopLevel2, self).__init__(top, '''A NEW USER APPEAR!''', '''CREATE NEW USER!''',
-                                        '''not possible''', ip)
+                                        '''not possible''', ip, 0)
         self.level1 = level1
 
         self.Button3 = tk.Button(self.top)
@@ -649,15 +653,14 @@ class TopLevel2(TopLevelMother):
             lenght = int(self.my_socket.recv(lenoflen).decode())
             data = self.my_socket.recv(lenght)
             data = pickle.loads(data)
-            # print(data)
-            if not data:
+            if not data[0]:
                 self.print_error()
                 self.Entry1.delete(0, 'end')
                 self.Entry2.delete(0, 'end')
                 self.Entry3.delete(0, 'end')
             else:
                 if data[1]:
-                    open_server()
+                    open_server(self.database_ip)
                 self.name = str(self.Entry1.get())
                 self.my_socket.close()
                 self.delete_error()
@@ -667,8 +670,9 @@ class TopLevel2(TopLevelMother):
             self.back_to_level1()
 
 
-def open_server():
-    subprocess.run(game_server.starting())
+def open_server(database_ip):
+    subprocess.run(game_server.starting(database_ip))
+    pygame.time.wait(2000)
 
 
 def get_ip():
@@ -703,6 +707,7 @@ def main():
         port, ip = stay_screen(connector_ip, connector_port, name)
         logging.basicConfig(level=logging.DEBUG)
         me = ClientSide(ip, port, name)
+        pygame.time.wait(2000)
         me.game_run()
 
 

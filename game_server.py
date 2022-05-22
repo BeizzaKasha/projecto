@@ -13,10 +13,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class ClientSide:
-    def __init__(self, server_port, server_ip, max_clients):
+    def __init__(self, server_port, server_ip, max_clients, database_ip):
         self.my_socket = socket.socket()
-        ip = str(socket.gethostname())
+        ip = database_ip
         port = 6666
+        print("Server " + str(ip) + "," + str(port))
         self.my_socket.connect((ip, port))
         self.send(pickle.dumps([constant.NEW_GAMESERVER, server_port, server_ip.encode(), max_clients]))
         logging.debug("client side connected...")
@@ -64,7 +65,7 @@ class ClientSide:
 
 
 class server:
-    def __init__(self):
+    def __init__(self, database_ip):
         self.game = Game()
         self.SERVER_PORT = 5555
         self.SERVER_IP = str(socket.gethostname())
@@ -73,7 +74,7 @@ class server:
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
         self.server_socket.listen()
         self.max_clients = 5
-        self.client_side = ClientSide(self.SERVER_PORT, self.SERVER_IP, self.max_clients)
+        self.client_side = ClientSide(self.SERVER_PORT, self.SERVER_IP, self.max_clients, database_ip)
         self.client_sockets = []
         self.messages_to_send = []
         self.number_of_client = 0
@@ -82,6 +83,7 @@ class server:
 
     def game_maker(self):
         while True:
+            logging.info("new game start")
             self.gamerun()
             self.game.restart()
 
@@ -486,14 +488,14 @@ class Orientation:
         self.name = name
 
 
-def starting():
+def starting(database_ip):
     pygame.init()
-    me = server()
+    me = server(database_ip)
     me.game_maker()
 
 
 def main():
-    starting()
+    starting(str(socket.gethostname()))
 
 
 if __name__ == "__main__":

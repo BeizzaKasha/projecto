@@ -5,14 +5,14 @@ import socket
 import pickle
 from Constants import constant
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class ServerSide:
     def __init__(self):
         self.SERVER_PORT = 6666
         self.SERVER_IP = str(socket.gethostname())
-        logging.debug("Setting up server...")
+        logging.debug("Setting up server at-> " + self.SERVER_IP)
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
         self.server_socket.listen()
@@ -50,12 +50,12 @@ class ServerSide:
         elif client_mov[0] == constant.GAMESERVER_UPDATE:  # game_server
             self.game_servers[current_socket][2] = client_mov[1]
             self.update_all(client_mov[2:])
-            # print(client_mov)
             players_movement.append((current_socket, "I love..."))
         elif client_mov[0] == constant.USER_CONNECTING:  # user connects
             is_ok = self.check_connection(client_mov[1], client_mov[2], client_mov[3], client_mov[4])
             players_movement.append((current_socket, is_ok))
         elif client_mov[0] == constant.NEW_GAMESERVER:  # new game server at wait
+            logging.info(client_mov)
             self.game_servers[current_socket] = [client_mov[1], str(client_mov[2])[2:-1], client_mov[3]]
         elif client_mov[0] == constant.HOMESCREEN_CONNECTS:  # home screen
             player = self.db.read(client_mov[1].decode())
@@ -107,7 +107,7 @@ class ServerSide:
         minimum = 10
         selected_server = False
         for server in self.game_servers:
-            print(self.game_servers[server])
+            # print(self.game_servers[server])
             if self.game_servers[server][2] < minimum:
                 selected_server = [self.game_servers[server][0], self.game_servers[server][1]]
                 minimum = self.game_servers[server][2]
@@ -204,12 +204,8 @@ class Database:
                 password="root",
                 database="shootydb"
             )
-        except:
-            self.create_db()
-            return
+            self.mycursor = self.mydb.cursor()
 
-        self.mycursor = self.mydb.cursor()
-        try:
             is_exist = False
             self.mycursor.execute("SHOW TABLES")
 
@@ -220,7 +216,16 @@ class Database:
             if not is_exist:
                 self.create_db()
                 return
+
         except:
+            if self.mydb == "":
+                self.mydb = mysql.connector.connect(
+                    host="localhost",
+                    user="root",
+                    password="root"
+                )
+            if self.mycursor == "":
+                self.mycursor = self.mydb.cursor()
             self.create_db()
             return
 
