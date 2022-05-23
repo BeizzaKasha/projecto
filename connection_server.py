@@ -40,21 +40,11 @@ class ServerSide:
                         self.client_quit(current_socket)
                     elif client_mov[0] == constant.USER_CONNECTING:  # user connect
                         is_ok = self.client_side.comunicate(client_mov[1:])
-                        """if is_ok:
-                            if not is_ok[0]:
-                                is_ok = False
-                            else:
-                                is_ok = True"""
                         players_movement.append((current_socket, is_ok))
                     elif client_mov[0] == constant.NEW_USER_CONNECTING:  # new user
                         is_ok = self.client_side.comunicate(client_mov[1:])
-                        """if not is_ok:
-                            if is_ok[1] == 0:
-                                is_ok = True
-                            else:
-                                is_ok = False"""
                         players_movement.append((current_socket, is_ok))
-                    elif client_mov[0] == constant.HOMESCREEN_CONNECTS:  # home screen
+                    elif client_mov[0] == constant.HOMESCREEN_CONNECTS:  # home screen connects
                         self.client_side.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, client_mov[1]]))
                         is_ok = self.client_side.read()
                         players_movement.append((current_socket, is_ok))
@@ -62,6 +52,10 @@ class ServerSide:
                         self.client_side.send(pickle.dumps([constant.HOMESCREEN_QUITING, client_mov[1]]))
                         self.client_side.read()
                         self.client_quit(current_socket)
+                    """elif client_mov[0] == constant.ENTER_GAME:  # client entering game
+                        self.client_side.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, client_mov[1]]))
+                        is_ok = self.client_side.read()
+                        players_movement.append((current_socket, is_ok))"""
             self.sending(players_movement)
             del players_movement
 

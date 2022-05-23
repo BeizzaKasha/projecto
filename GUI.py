@@ -7,7 +7,7 @@ import sys
 import time
 from Constants import constant
 import game_server
-import subprocess
+import multiprocessing
 
 import pygame
 from pygame.locals import (
@@ -25,7 +25,7 @@ class ClientSide:
     def __init__(self, ip, port, name):
         logging.debug("client begin")
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print((ip, port))
+        print("GUI" + str(ip) + "," + str(port))
         self.my_socket.connect((ip, port))
         logging.info("connect to server at {0} with port {1}".format(ip, port))
         pygame.init()
@@ -223,10 +223,18 @@ class HomeScreen:
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.my_socket.connect((connectir_ip, connectir_port))
         self.name = name
+        self.gui_run = True
 
         self.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, self.name.encode()]))
         data = self.read()
         print(data)
+        print(connectir_ip)
+        if not data[1]:
+            open_server((connectir_ip, "5555"))
+            self.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, self.name.encode()]))
+            data = self.read()
+            time.sleep(0.2)
+            print(data)
         self.player = data[0]
         ip, port = data[1]
         self.position = data[2]
@@ -337,7 +345,10 @@ class HomeScreen:
         self.send(pickle.dumps([constant.HOMESCREEN_QUITING, self.name.encode()]))
         print('---------------quit----------------')
         sys.stdout.flush()
-        sys.exit()
+        self.my_socket.close()
+        self.top.destroy()
+        self.gui_run = False
+        # sys.exit()
 
     def read(self):
         lenoflen = int(self.my_socket.recv(4).decode())
@@ -448,7 +459,7 @@ class TopLevelMother:
         self.Entry2.configure(highlightcolor="black")
         self.Entry2.configure(insertbackground="black")
         self.Entry2.configure(selectbackground="blue")
-        self.Entry2.configure(show="quq")
+        self.Entry2.configure(show="*")
         self.Entry2.configure(selectforeground="white")
 
         self.Label3 = tk.Label(self.top)
@@ -578,7 +589,7 @@ class TopLevel1(TopLevelMother):
         self.top.withdraw()
         root = tk.Tk()
         root.protocol('WM_DELETE_WINDOW', root.destroy)
-        _w2 = TopLevel2(root, self, self.my_socket, self.database_ip)
+        _w2 = TopLevel2(root, self, self.my_socket)
         self.name = _w2.name
 
     def level2_got_in(self, name):
@@ -590,7 +601,7 @@ class TopLevel1(TopLevelMother):
 
 
 class TopLevel2(TopLevelMother):
-    def __init__(self, top, level1, ip, database_ip):
+    def __init__(self, top, level1, ip):
         super(TopLevel2, self).__init__(top, '''A NEW USER APPEAR!''', '''CREATE NEW USER!''',
                                         '''not possible''', ip, 0)
         self.level1 = level1
@@ -644,7 +655,7 @@ class TopLevel2(TopLevelMother):
         print("username = " + str(self.Entry1.get()))
         print("password = " + str(self.Entry2.get()))
         date = time.localtime()[0:-4]
-        update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
+        update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4]).zfill(2)
         self.send(pickle.dumps(
             (constant.NEW_USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), update_date, self.Entry3.get())))
 
@@ -653,6 +664,7 @@ class TopLevel2(TopLevelMother):
             lenght = int(self.my_socket.recv(lenoflen).decode())
             data = self.my_socket.recv(lenght)
             data = pickle.loads(data)
+            print(data)
             if not data[0]:
                 self.print_error()
                 self.Entry1.delete(0, 'end')
@@ -671,8 +683,10 @@ class TopLevel2(TopLevelMother):
 
 
 def open_server(database_ip):
-    subprocess.run(game_server.starting(database_ip))
-    pygame.time.wait(2000)
+    server = multiprocessing.Process(target=game_server.starting, args=database_ip)
+    server.start()
+    # subprocess.run(game_server.starting(database_ip), timeout=1)
+    time.sleep(2)
 
 
 def get_ip():
@@ -698,13 +712,16 @@ def stay_screen(ip, port, name):
     root.protocol('WM_DELETE_WINDOW', root.destroy)
     home_screen = HomeScreen(root, ip, port, name)
     root.mainloop()
-    return home_screen.ip, home_screen.port
+    return home_screen.ip, home_screen.port, home_screen.gui_run
 
 
 def main():
     connector_ip, connector_port, name = entering()
-    while True:
-        port, ip = stay_screen(connector_ip, connector_port, name)
+    gui_run = True
+    while gui_run:
+        port, ip, gui_run = stay_screen(connector_ip, connector_port, name)
+        if not gui_run:
+            break
         logging.basicConfig(level=logging.DEBUG)
         me = ClientSide(ip, port, name)
         pygame.time.wait(2000)

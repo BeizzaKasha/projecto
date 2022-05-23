@@ -38,15 +38,6 @@ class ClientSide:
     def make_message(self, game, space):
         stats = [constant.GAMESERVER_UPDATE, space]
         print("sending")
-        """date = time.localtime()[0:-4]
-        update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4])
-        for player in game.players:
-            stats.append((player.name, player.password, "Nadav", update_date,
-                          player.score / ((game.round_time * (10 / 1000)) / 60), True))
-        for player in game.quiters:
-            stats.append((player.name, player.password, "Nadav", update_date,
-                          player.score / ((game.round_time * (10 / 1000)) / 60), False))
-            # ((game.game_time * (10 / 1000)) / 60) = time of round in minutes"""
         for player in game.players:
             stats.append((player.name, player.score / ((game.round_time * (10 / 1000)) / 60)))
         return stats
@@ -60,14 +51,14 @@ class ClientSide:
         stats = self.make_message(game, space)
         self.send(pickle.dumps(stats))
         self.read()
-        self.send(pickle.dumps(99))
+        self.send(pickle.dumps((constant.SERVER_QUIT, constant.QUITING)))
         self.read()
 
 
 class server:
     def __init__(self, database_ip):
         self.game = Game()
-        self.SERVER_PORT = 5555
+        self.SERVER_PORT = 55555
         self.SERVER_IP = str(socket.gethostname())
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -161,9 +152,8 @@ class server:
 
     def player_quit(self, current_socket):
         logging.info(str(current_socket) + " left")
-        left = self.players_conection[current_socket]
-        self.game.quiters.add(left)
-        self.game.players.remove(left)
+        self.game.players.remove(self.players_conection[current_socket])
+        self.players_conection.pop(current_socket)
         current_socket.shutdown(socket.SHUT_RDWR)
         current_socket.close()
         self.client_sockets.remove(current_socket)
@@ -187,7 +177,7 @@ class server:
         running = True
 
         while running:
-            rlist, wlist, xlist = select.select([self.server_socket] + self.client_sockets, [], [])
+            rlist, wlist, xlist = select.select([self.server_socket] + self.client_sockets, [], [], 0.1)
             player_movement = self.get_from_clients(rlist)
 
             if self.game.game_time > 0:
@@ -231,7 +221,6 @@ class Game:
         self.SCREEN_HEIGHT = 600
 
         self.players = pygame.sprite.Group()
-        self.quiters = pygame.sprite.Group()
 
         self.enemies = pygame.sprite.Group()
         self.all_sprites = pygame.sprite.Group()
@@ -488,7 +477,10 @@ class Orientation:
         self.name = name
 
 
-def starting(database_ip):
+def starting(database_ip, *args):
+    print("extras=> ")
+    for arg in args:
+        print(arg)
     pygame.init()
     me = server(database_ip)
     me.game_maker()

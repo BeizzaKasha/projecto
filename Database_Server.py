@@ -65,6 +65,12 @@ class ServerSide:
             player = self.db.read(client_mov[1].decode())
             self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], False)
             players_movement.append((current_socket, constant.QUITING))
+        elif client_mov[0] == constant.SERVER_QUIT:  # game server quit
+            self.game_servers.pop(current_socket)
+            print(self.game_servers)
+            self.client_quit(current_socket)
+        """elif client_mov[0] == constant.ENTER_GAME:
+            players_movement.append((current_socket, self.pick_server()))"""
         return players_movement
 
     def find_position(self, player):
