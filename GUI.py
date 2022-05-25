@@ -96,6 +96,7 @@ class ClientSide:
                 if obj_name[0] == "0":
                     self.screen.blit(sprit.text, sprit.rect)
                 else:
+                    print(obj_name[1])
                     if obj_name[1] == self.name:
                         sprit.color = 'blue'
                     self.screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
@@ -154,7 +155,7 @@ class Orientation:
 
 class IpCatcher:
     def __init__(self, top):
-        _bgcolor = '#d9d9d9'  # X11 color: 'gray85'
+        _bgcolor = '#c1cdcd'  # X11 color: 'gray85'
         _fgcolor = '#000000'  # X11 color: 'black'
         _compcolor = '#d9d9d9'  # X11 color: 'gray85'
         _ana1color = '#d9d9d9'  # X11 color: 'gray85'
@@ -163,33 +164,33 @@ class IpCatcher:
 
         self.top = top
         top.geometry("600x450+504+171")
-        top.minsize(80, 40)
-        top.maxsize(404, 241)
+        top.minsize(360, 220)
+        top.maxsize(500, 380)
         top.resizable(1, 1)
         top.title("Enter to game")
-        top.configure(background="#d9d9d9")
+        top.configure(background=_bgcolor)
         top.configure(highlightbackground="#d9d9d9")
         top.configure(highlightcolor="black")
         self.style = ttk.Style()
 
         self.Label1 = tk.Label(self.top)
-        self.Label1.place(relx=0.05, rely=0.01, height=20, width=600)
+        self.Label1.place(relx=0.05, rely=0.01, height=50, width=280)
         self.Label1.configure(activebackground="#f9f9f9")
         self.Label1.configure(activeforeground="black")
         self.Label1.configure(anchor='w')
-        self.Label1.configure(background="#d9d9d9")
+        self.Label1.configure(background=_bgcolor)
         self.Label1.configure(compound='center')
         self.Label1.configure(disabledforeground="#a3a3a3")
         self.Label1.configure(foreground="#000000")
         self.Label1.configure(highlightbackground="#d9d9d9")
         self.Label1.configure(highlightcolor="black")
-        self.Label1.configure(text="ENTER SERVER ip")
+        self.Label1.configure(text="ENTER SERVER IP")
         self.Label1.config(font=('Helvatical bold', 20))
 
         self.Entry1 = tk.Entry(self.top)
-        self.Entry1.place(relx=0.01, rely=0.25, height=40, relwidth=0.307)
-        self.Entry1.configure(background="white")
-        self.Entry1.configure(disabledforeground="#a3a3a3")
+        self.Entry1.place(relx=0.01, rely=0.3, height=40, relwidth=0.45)
+        self.Entry1.configure(background="#e0eeee")
+        self.Entry1.configure(disabledforeground="#ff3030")
         self.Entry1.configure(font="TkFixedFont")
         self.Entry1.configure(foreground="#000000")
         self.Entry1.configure(highlightbackground="#d9d9d9")
@@ -200,9 +201,9 @@ class IpCatcher:
 
         self.Button1 = tk.Button(self.top)
         self.Button1.place(relx=0.1, rely=0.733, height=60, width=115)
-        self.Button1.configure(activebackground="#ececec")
+        self.Button1.configure(activebackground="#838b8b")
         self.Button1.configure(activeforeground="#000000")
-        self.Button1.configure(background="#d9d9d9")
+        self.Button1.configure(background="#e0eeee")
         self.Button1.configure(compound='left')
         self.Button1.configure(disabledforeground="#a3a3a3")
         self.Button1.configure(foreground="#000000")
@@ -292,7 +293,7 @@ class HomeScreen:
         self.Label2.config(font=('Helvatical bold', 10))
 
         self.Label3 = tk.Label(self.top)
-        self.Label3.place(relx=0, rely=0.4, height=20, width=250)
+        self.Label3.place(relx=0, rely=0.4, height=20, width=280)
         self.Label3.configure(activebackground="#f9f9f9")
         self.Label3.configure(activeforeground="black")
         self.Label3.configure(anchor='w')
@@ -302,7 +303,7 @@ class HomeScreen:
         self.Label3.configure(foreground="#000000")
         self.Label3.configure(highlightbackground="#d9d9d9")
         self.Label3.configure(highlightcolor="black")
-        self.Label3.configure(text='''Your playing this game since ''' + self.player[2])
+        self.Label3.configure(text='''You are playing this game since ''' + self.player[2])
         self.Label3.config(font=('Helvatical bold', 10))
 
         self.Label4 = tk.Label(self.top)
@@ -372,9 +373,9 @@ class HomeScreen:
 
     def position_placer(self, position):
         if position == 1:
-            return "you are the best in the game!"
+            return "You are the best in the game!"
         else:
-            return "your position the player ranking is " + str(position)
+            return "Your position the player ranking is " + str(position) + "!"
 
     def Enter_game(self):
         self.my_socket.close()
