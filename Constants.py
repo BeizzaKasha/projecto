@@ -6,3 +6,5 @@ class constant:
     HOMESCREEN_QUITING = 3
     NEW_GAMESERVER = 4
     GAMESERVER_UPDATE = 5
+    SERVER_QUIT = 6
+    CHECK_LIVE = 7

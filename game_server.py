@@ -58,7 +58,7 @@ class ClientSide:
 class server:
     def __init__(self, database_ip):
         self.game = Game()
-        self.SERVER_PORT = 55555
+        self.SERVER_PORT = 55566
         self.SERVER_IP = str(socket.gethostname())
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -105,6 +105,8 @@ class server:
         player = self.players_conection[current_socket]
         # print(name, player.name)
         player.name = name
+        player.orientation = Orientation(player.rect.x, player.rect.y, player.rect.width, player.rect.height,
+                                         player.angle, 'red', "1," + str(player.name))
 
     def client_mesege(self, current_socket):
         try:
@@ -435,7 +437,7 @@ class Game:
 
         def Serialize(self, num):
             orientation = Orientation(self.txts[num][1].x, self.txts[num][1].y, self.txts[num][1].width,
-                                      self.txts[num][1].height, self.txts[num][2], self.txts[num][3], self.txts[num][0])
+                                      self.txts[num][1].height, self.txts[num][2], self.txts[num][3], "0," + self.txts[num][0])
             return pickle.dumps(orientation)
 
         class Block(pygame.sprite.Sprite):

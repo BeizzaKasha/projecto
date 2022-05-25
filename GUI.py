@@ -25,7 +25,7 @@ class ClientSide:
     def __init__(self, ip, port, name):
         logging.debug("client begin")
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print("GUI" + str(ip) + "," + str(port))
+        print("GUI- " + str(ip) + "," + str(port))
         self.my_socket.connect((ip, port))
         logging.info("connect to server at {0} with port {1}".format(ip, port))
         pygame.init()
@@ -50,7 +50,11 @@ class ClientSide:
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
             self.name = name
             self.font = pygame.font.Font('freesansbold.ttf', int(angle))
-            self.text = self.font.render(self.name, True, self.color, (0, 0, 0))
+            try:
+                obj_name = self.name.split(",")
+                self.text = self.font.render(obj_name[1], True, self.color, (0, 0, 0))
+            except:
+                self.text = self.font.render(self.name, True, self.color, (0, 0, 0))
             self.text.set_colorkey((0, 0, 0))
 
     def game_run(self):
@@ -88,7 +92,13 @@ class ClientSide:
             if sprit.name == "":
                 self.screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
             else:
-                self.screen.blit(sprit.text, sprit.rect)
+                obj_name = sprit.name.split(",")
+                if obj_name[0] == "0":
+                    self.screen.blit(sprit.text, sprit.rect)
+                else:
+                    if obj_name[1] == self.name:
+                        sprit.color = 'blue'
+                    self.screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
 
     def mov(self):
         mx, my = pygame.mouse.get_pos()
@@ -230,7 +240,7 @@ class HomeScreen:
         print(data)
         print(connectir_ip)
         if not data[1]:
-            open_server((connectir_ip, "5555"))
+            open_server((connectir_ip, "helo"))
             self.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, self.name.encode()]))
             data = self.read()
             time.sleep(0.2)
@@ -555,7 +565,8 @@ class TopLevelMother:
                 self.Entry2.delete(0, 'end')
             else:
                 if data[1]:
-                    open_server(self.database_ip)
+                    print(self.database_ip)
+                    open_server((self.database_ip, "helo"))
                 self.name = str(self.Entry1.get())
                 self.my_socket.close()
                 self.delete_error()
@@ -647,7 +658,6 @@ class TopLevel2(TopLevelMother):
         self.Label5.config(font=('Helvatical bold', 10))
 
     def back_to_level1(self):
-        print(self.name)
         self.top.destroy()
         self.level1.level2_got_in(self.name)
 
@@ -672,6 +682,7 @@ class TopLevel2(TopLevelMother):
                 self.Entry3.delete(0, 'end')
             else:
                 if data[1]:
+                    print(self.database_ip)
                     open_server(self.database_ip)
                 self.name = str(self.Entry1.get())
                 self.my_socket.close()
@@ -686,7 +697,7 @@ def open_server(database_ip):
     server = multiprocessing.Process(target=game_server.starting, args=database_ip)
     server.start()
     # subprocess.run(game_server.starting(database_ip), timeout=1)
-    time.sleep(2)
+    time.sleep(3)
 
 
 def get_ip():
@@ -724,7 +735,7 @@ def main():
             break
         logging.basicConfig(level=logging.DEBUG)
         me = ClientSide(ip, port, name)
-        pygame.time.wait(2000)
+        time.sleep(1)
         me.game_run()
 
 
