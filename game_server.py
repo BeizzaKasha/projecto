@@ -20,6 +20,7 @@ class ClientSide:
         print("Server " + str(ip) + "," + str(port))
         self.my_socket.connect((ip, port))
         self.send(pickle.dumps([constant.NEW_GAMESERVER, server_port, server_ip.encode(), max_clients]))
+        self.read()
         logging.debug("client side connected...")
 
     def send(self, data):
@@ -58,7 +59,7 @@ class ClientSide:
 class server:
     def __init__(self, database_ip):
         self.game = Game()
-        self.SERVER_PORT = 55566
+        self.SERVER_PORT = 55555
         self.SERVER_IP = str(socket.gethostname())
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -437,7 +438,7 @@ class Game:
 
         def Serialize(self, num):
             orientation = Orientation(self.txts[num][1].x, self.txts[num][1].y, self.txts[num][1].width,
-                                      self.txts[num][1].height, self.txts[num][2], self.txts[num][3], "0," + self.txts[num][0])
+                                      self.txts[num][1].height, self.txts[num][2], self.txts[num][3], self.txts[num][0])
             return pickle.dumps(orientation)
 
         class Block(pygame.sprite.Sprite):

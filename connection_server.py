@@ -38,10 +38,7 @@ class ServerSide:
                     client_mov = self.client_mesege(current_socket)
                     if client_mov == 99:
                         self.client_quit(current_socket)
-                    elif client_mov[0] == constant.USER_CONNECTING:  # user connect
-                        is_ok = self.client_side.comunicate(client_mov[1:])
-                        players_movement.append((current_socket, is_ok))
-                    elif client_mov[0] == constant.NEW_USER_CONNECTING:  # new user
+                    elif client_mov[0] == constant.USER_CONNECTING:  # user connect / new user
                         is_ok = self.client_side.comunicate(client_mov[1:])
                         players_movement.append((current_socket, is_ok))
                     elif client_mov[0] == constant.HOMESCREEN_CONNECTS:  # home screen connects
@@ -79,7 +76,7 @@ class ServerSide:
             print(rsv)
         except:
             logging.error("problem with resiving a message: " + str(current_socket))
-            rsv = 99
+            rsv = constant.QUITING
         finally:
             return rsv
 
@@ -125,7 +122,7 @@ class ClientSide:
             logging.error(e)
 
     def make_message(self, name, password, date, client_name):
-        if name != "" and password != "":
+        if name != "" or password != "":
             return [constant.USER_CONNECTING, name, password, date, client_name]
         else:
             print("not sending")

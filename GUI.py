@@ -45,17 +45,29 @@ class ClientSide:
             self.rect = self.rectangle.get_rect()
             self.rect.move_ip(x, y)
             self.color = color
+            self.angle = angle
             self.rectangle.fill(pygame.Color(self.color))
-            self.rot_image = pygame.transform.rotate(self.rectangle, angle)
+            self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
             self.name = name
-            self.font = pygame.font.Font('freesansbold.ttf', int(angle))
+            self.font = pygame.font.Font('freesansbold.ttf', int(self.angle))
             try:
                 obj_name = self.name.split(",")
                 self.text = self.font.render(obj_name[1], True, self.color, (0, 0, 0))
             except:
                 self.text = self.font.render(self.name, True, self.color, (0, 0, 0))
             self.text.set_colorkey((0, 0, 0))
+
+        def change_color(self, color):
+            self.color = color
+            self.rectangle.fill(pygame.Color(self.color))
+            self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
+            self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
+            try:
+                obj_name = self.name.split(",")
+                self.text = self.font.render(obj_name[1], True, self.color, (0, 0, 0))
+            except:
+                self.text = self.font.render(self.name, True, self.color, (0, 0, 0))
 
     def game_run(self):
         running = True
@@ -93,12 +105,11 @@ class ClientSide:
                 self.screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
             else:
                 obj_name = sprit.name.split(",")
-                if obj_name[0] == "0":
+                if len(obj_name) == 1:
                     self.screen.blit(sprit.text, sprit.rect)
                 else:
-                    print(obj_name[1])
-                    if obj_name[1] == self.name:
-                        sprit.color = 'blue'
+                    if str(obj_name[1]) == str(self.name):
+                        sprit.change_color('blue')
                     self.screen.blit(sprit.rot_image, sprit.rot_image_rect.topleft)
 
     def mov(self):
@@ -666,9 +677,10 @@ class TopLevel2(TopLevelMother):
         print("username = " + str(self.Entry1.get()))
         print("password = " + str(self.Entry2.get()))
         date = time.localtime()[0:-4]
-        update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(date[4]).zfill(2)
+        update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(
+            date[4]).zfill(2)
         self.send(pickle.dumps(
-            (constant.NEW_USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), update_date, self.Entry3.get())))
+            (constant.USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), update_date, self.Entry3.get())))
 
         try:
             lenoflen = int(self.my_socket.recv(4).decode())
@@ -727,7 +739,7 @@ def stay_screen(ip, port, name):
     return home_screen.ip, home_screen.port, home_screen.gui_run
 
 
-def main():
+def run():
     connector_ip, connector_port, name = entering()
     gui_run = True
     while gui_run:
@@ -738,6 +750,10 @@ def main():
         me = ClientSide(ip, port, name)
         time.sleep(1)
         me.game_run()
+
+
+def main():
+    run()
 
 
 if __name__ == "__main__":
