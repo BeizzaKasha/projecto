@@ -245,7 +245,7 @@ class Game:
             self.rect = self.rectangle.get_rect()
 
     def restart(self):
-        self.game_time = 500
+        self.game_time = 2000
         self.all_sprites.empty()
         self.enemies.empty()
         for i in range(random.randint(10, 15)):
@@ -455,18 +455,19 @@ class Game:
                 return pickle.dumps(self.orientation)
 
         def winner(self, players):
-            winner = players.sprites()[0]
-            for player in players:
-                if winner.score < player.score:
-                    winner = player
-            color = (255, 215, 0)
-            size = 60
-            font = pygame.font.Font('freesansbold.ttf', size)
-            text = font.render(str(winner.name) + " is the winner!!!", True, color)
-            text_name = str(winner.name) + " is the winner!!!"
-            textRect = text.get_rect()
-            textRect.center = (450, 300)
-            self.txts.append((text_name, textRect, size, color))
+            if len(players) != 0:
+                winner = players.sprites()[0]
+                for player in players:
+                    if winner.score < player.score:
+                        winner = player
+                color = (255, 215, 0)
+                size = 60
+                font = pygame.font.Font('freesansbold.ttf', size)
+                text = font.render(str(winner.name) + " is the winner!!!", True, color)
+                text_name = str(winner.name) + " is the winner!!!"
+                textRect = text.get_rect()
+                textRect.center = (450, 300)
+                self.txts.append((text_name, textRect, size, color))
 
 
 class Orientation:
