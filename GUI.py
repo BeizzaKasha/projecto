@@ -8,6 +8,7 @@ import time
 from Constants import constant
 import game_server
 import multiprocessing
+from multiprocessing import freeze_support
 
 import pygame
 from pygame.locals import (
@@ -142,7 +143,7 @@ class ClientSide:
                 self.close(False)
 
         except Exception as e:
-            print(str(e) + " <---error")
+            logging.error(f"reading error in client_side in GUI: {e}")
             self.close(True)
 
     def close(self, cause):
@@ -249,17 +250,18 @@ class HomeScreen:
 
         self.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, self.name.encode()]))
         data = self.read()
-        print(data)
-        print(connectir_ip)
-        if not data[1]:
-            open_server((connectir_ip, "helo"))
-            self.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, self.name.encode()]))
-            data = self.read()
-            time.sleep(0.2)
-            print(data)
+        logging.debug(f"server to connect: {data}")
         self.player = data[0]
-        ip, port = data[1]
-        self.position = data[2]
+        self.position = data[1]
+        self.send(pickle.dumps([constant.SERVER_REQUEST, self.name.encode()]))
+        data = self.read()
+        if not data:
+            self.open_server((connectir_ip, "helo"))
+            self.send(pickle.dumps([constant.SERVER_REQUEST, self.name.encode()]))
+            data = self.read()
+            # time.sleep(0.2)
+            print(data)
+        ip, port = data
         self.ip = ip
         self.port = port
 
@@ -342,7 +344,7 @@ class HomeScreen:
         self.Button1.configure(highlightbackground="#d9d9d9")
         self.Button1.configure(highlightcolor="black")
         self.Button1.configure(pady="0")
-        self.Button1.configure(text='''ENTER GAME....''')
+        self.Button1.configure(text='''ENTER GAME''')
         self.Button1.configure(command=self.Enter_game)
 
         self.Button2 = tk.Button(self.top)
@@ -362,6 +364,11 @@ class HomeScreen:
         self.style.configure('TSizegrip', background=_bgcolor)
         self.TSizegrip1 = ttk.Sizegrip(self.top)
         self.TSizegrip1.place(anchor='se', relx=1.0, rely=1.0)
+
+    def open_server(self, database_ip):
+        server = multiprocessing.Process(target=game_server.starting, args=database_ip)
+        server.start()
+        time.sleep(2)
 
     def quit(self):
         self.send(pickle.dumps([constant.HOMESCREEN_QUITING, self.name.encode()]))
@@ -431,8 +438,9 @@ class TopLevelMother:
         self.error_msg = error_msg
         self.name = ""
 
+        headline = headline.split(",")
         self.Label1 = tk.Label(self.top)
-        self.Label1.place(relx=0.05, rely=0.01, height=30, width=600)
+        self.Label1.place(relx=headline[1], rely=headline[2], height=headline[3], width=600)
         self.Label1.configure(activebackground=_bgcolor)
         self.Label1.configure(activeforeground="black")
         self.Label1.configure(anchor='w')
@@ -442,8 +450,8 @@ class TopLevelMother:
         self.Label1.configure(foreground="#000000")
         self.Label1.configure(highlightbackground="#d9d9d9")
         self.Label1.configure(highlightcolor="black")
-        self.Label1.configure(text=headline)
-        self.Label1.config(font=('Comic Sans MS', 20))
+        self.Label1.configure(text=headline[0])
+        self.Label1.config(font=('Comic Sans MS', 25))
 
         self.Entry1 = tk.Entry(self.top)
         self.Entry1.place(relx=0.01, rely=0.25, height=40, relwidth=0.307)
@@ -564,35 +572,32 @@ class TopLevelMother:
         self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
 
     def entername(self):
-        print("username = " + str(self.Entry1.get()))
-        print("password = " + str(self.Entry2.get()))
+        logging.debug(f"username = {self.Entry1.get()}")
+        logging.debug(f"password = {self.Entry2.get()}")
         self.send(pickle.dumps((constant.USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), "", "")))
-
         try:
             lenoflen = int(self.my_socket.recv(4).decode())
             lenght = int(self.my_socket.recv(lenoflen).decode())
             data = self.my_socket.recv(lenght)
             data = pickle.loads(data)
-            if not data[0]:
+            if not data:
                 self.print_error()
                 self.Entry1.delete(0, 'end')
                 self.Entry2.delete(0, 'end')
             else:
-                if data[1]:
-                    print(self.database_ip)
-                    open_server((self.database_ip, "helo"))
                 self.name = str(self.Entry1.get())
+                self.my_socket.send(pickle.dumps(constant.QUITING))
                 self.my_socket.close()
                 self.delete_error()
                 self.top.destroy()
         except Exception as e:
-            print(str(e) + " <---error")
+            logging.error(f"TopLevelMother error occurred: {e}")
             sys.exit()
 
 
 class TopLevel1(TopLevelMother):
     def __init__(self, top, ip):
-        super(TopLevel1, self).__init__(top, '''WELCOME TO SHOOTY SHOOTY GAME''', '''ENTER GAME!''',
+        super(TopLevel1, self).__init__(top, '''welcome to\nGENERCUBE,0.5,0.15, 160''', '''CONNECT TO USER''',
                                         '''INCORRECT NAME OR PASSWORD''', ip, 1)
         self.ip = ip
 
@@ -628,7 +633,7 @@ class TopLevel1(TopLevelMother):
 
 class TopLevel2(TopLevelMother):
     def __init__(self, top, level1, ip):
-        super(TopLevel2, self).__init__(top, '''A NEW USER APPEAR!''', '''CREATE NEW USER!''',
+        super(TopLevel2, self).__init__(top, '''A NEW USER APPEAR!,0.05,0.01, 60''', '''CREATE NEW USER''',
                                         '''not possible''', ip, 0)
         self.level1 = level1
 
@@ -677,91 +682,83 @@ class TopLevel2(TopLevelMother):
         self.level1.level2_got_in(self.name)
 
     def entername(self):
-        print("username = " + str(self.Entry1.get()))
-        print("password = " + str(self.Entry2.get()))
+        logging.debug(f"username = {self.Entry1.get()}")
+        logging.debug(f"password = {self.Entry2.get()}")
         date = time.localtime()[0:-4]
         update_date = str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]) + " " + str(date[3]) + ":" + str(
             date[4]).zfill(2)
         self.send(pickle.dumps(
             (constant.USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), update_date, self.Entry3.get())))
-
         try:
             lenoflen = int(self.my_socket.recv(4).decode())
             lenght = int(self.my_socket.recv(lenoflen).decode())
             data = self.my_socket.recv(lenght)
             data = pickle.loads(data)
-            print(data)
-            if not data[0]:
+            if not data:
                 self.print_error()
                 self.Entry1.delete(0, 'end')
                 self.Entry2.delete(0, 'end')
                 self.Entry3.delete(0, 'end')
             else:
-                if data[1]:
-                    print(self.database_ip)
-                    open_server(self.database_ip)
                 self.name = str(self.Entry1.get())
+                self.my_socket.send(pickle.dumps(constant.QUITING))
                 self.my_socket.close()
                 self.delete_error()
                 self.back_to_level1()
         except Exception as e:
-            print(str(e) + " <---error")
+            logging.error(f"TopLevel2 error occurred: {e}")
             self.back_to_level1()
 
 
-def open_server(database_ip):
-    server = multiprocessing.Process(target=game_server.starting, args=database_ip)
-    server.start()
-    # subprocess.run(game_server.starting(database_ip), timeout=1)
-    time.sleep(3)
+class screen_manager:
+    def get_ip(self):
+        root = tk.Tk()
+        root.protocol('WM_DELETE_WINDOW', root.destroy)
+        start_tk = IpCatcher(root)
+        root.mainloop()
+        return start_tk.ip
 
+    def entering(self):
+        ip = self.get_ip()
+        root = tk.Tk()
+        root.protocol('WM_DELETE_WINDOW', root.destroy)
+        _w1 = TopLevel1(root, ip)
+        # root.after(1000, _w1.loop, root)
+        root.mainloop()
+        return _w1.connector_ip, _w1.connector_port, _w1.name
 
-def get_ip():
-    root = tk.Tk()
-    root.protocol('WM_DELETE_WINDOW', root.destroy)
-    start_tk = IpCatcher(root)
-    root.mainloop()
-    return start_tk.ip
+    def stay_screen(self, ip, port, name):
+        root = tk.Tk()
+        root.protocol('WM_DELETE_WINDOW', root.destroy)
+        home_screen = HomeScreen(root, ip, port, name)
+        root.mainloop()
+        return home_screen.ip, home_screen.port, home_screen.gui_run
 
-
-def entering():
-    ip = get_ip()
-    root = tk.Tk()
-    root.protocol('WM_DELETE_WINDOW', root.destroy)
-    _w1 = TopLevel1(root, ip)
-    # root.after(1000, _w1.loop, root)
-    root.mainloop()
-    return _w1.connector_ip, _w1.connector_port, _w1.name
-
-
-def stay_screen(ip, port, name):
-    root = tk.Tk()
-    root.protocol('WM_DELETE_WINDOW', root.destroy)
-    home_screen = HomeScreen(root, ip, port, name)
-    root.mainloop()
-    return home_screen.ip, home_screen.port, home_screen.gui_run
-
-
-def run():
-    connector_ip, connector_port, name = entering()
-    gui_run = True
-    while gui_run:
-        port, ip, gui_run = stay_screen(connector_ip, connector_port, name)
-        if not gui_run:
-            break
-        logging.basicConfig(level=logging.DEBUG)
-        me = ClientSide(ip, port, name)
-        time.sleep(1)
-        me.game_run()
+    def screen_control_loop(self):
+        connector_ip, connector_port, name = self.entering()
+        gui_run = True
+        while gui_run:
+            port, ip, gui_run = self.stay_screen(connector_ip, connector_port, name)
+            if not gui_run:
+                break
+            logging.basicConfig(level=logging.DEBUG)
+            try:
+                me = ClientSide(ip, port, name)
+                me.game_run()
+            except Exception as e:
+                logging.error(e)
+                continue
 
 
 def main():
-    run()
+    freeze_support()
+    SM = screen_manager()
+    SM.screen_control_loop()
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(str(e.with_traceback()) + " <---error")
+        print(f"error occurred-> {e}")
         input("wut?")

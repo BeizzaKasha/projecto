@@ -48,31 +48,20 @@ class ServerSide:
         if client_mov == constant.QUITING:
             self.client_quit(current_socket)
         elif client_mov[0] == constant.GAMESERVER_UPDATE:  # game_server
-            self.game_servers[current_socket][2] = client_mov[1]
-            self.update_all(client_mov[2:])
+            self.update_all(client_mov[1:])
             players_movement.append((current_socket, "I love..."))
         elif client_mov[0] == constant.USER_CONNECTING:  # user connects
             is_ok = self.check_connection(client_mov[1], client_mov[2], client_mov[3], client_mov[4])
             print(f"is_ok = {is_ok}")
             players_movement.append((current_socket, is_ok))
-        elif client_mov[0] == constant.NEW_GAMESERVER:  # new game server at wait
-            logging.info(client_mov)
-            self.game_servers[current_socket] = [client_mov[1], str(client_mov[2])[2:-1], client_mov[3]]
         elif client_mov[0] == constant.HOMESCREEN_CONNECTS:  # home screen
             player = self.db.read(client_mov[1].decode())
             position = self.find_position(player)
-            print(f"self.pick_server returns {self.pick_server()}")
-            players_movement.append((current_socket, (player, self.pick_server(), position)))
+            players_movement.append((current_socket, (player, position)))
         elif client_mov[0] == constant.HOMESCREEN_QUITING:  # home screen quit
             player = self.db.read(client_mov[1].decode())
             self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], False)
             players_movement.append((current_socket, constant.QUITING))
-        elif client_mov[0] == constant.SERVER_QUIT:  # game server quit
-            self.game_servers.pop(current_socket)
-            print(self.game_servers)
-            self.client_quit(current_socket)
-        """elif client_mov[0] == constant.ENTER_GAME:
-            players_movement.append((current_socket, self.pick_server()))"""
         return players_movement
 
     def find_position(self, player):
@@ -87,62 +76,24 @@ class ServerSide:
     def check_connection(self, name, password, date, client_name):
         if date != "" and client_name != "":
             if self.db.is_exist(name):
-                return [False]
+                return False
             else:
                 try:
                     self.db.add(name, password, client_name, date, "", 0, True)
-                    print(f"self.pick_server() returned {self.pick_server()}")
-                    if not self.pick_server():
-                        return [True, True]
-                    else:
-                        return [True, False]
+                    return True
                 except Exception as e:
                     print(e)
-                    return [False]
+                    return False
         else:
             if not self.db.is_exist(name):
-                return [False]
+                return False
             else:
                 player = self.db.read(name)
                 if password == player[1] and player[6] == 0:
                     self.db.add(player[0], player[1], player[5], player[2], player[3], player[4], True)
-                    if not self.pick_server():
-                        return [True, True]
-                    else:
-                        return [True, False]
+                    return True
                 else:
-                    return [False]
-
-    def pick_server(self):
-        minimum = 10
-        selected_server = None
-        if not self.game_servers:
-            print(f"no selected server")
-            return False
-        for server in self.game_servers:
-            # print(server)
-            if self.game_servers[server][2] < minimum:
-                selected_server = [self.game_servers[server][0], self.game_servers[server][1], server]
-                print(f"selected_server = {selected_server}")
-                minimum = self.game_servers[server][2]
-            if selected_server is None:
-                print(f"why did we get here?")
-                return False
-            else:
-                try:
-                    data = pickle.dumps(constant.CHECK_LIVE)
-                    selected_server[-1].send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
-                    return selected_server[:-1]
-                except:
-                    self.game_servers.pop(selected_server[-1])
-                    print("servers: " + str(self.game_servers))
-                    self.client_quit(selected_server[-1])
-                    selected_server = self.pick_server()
-                    if not selected_server:
-                        print("helo")
-                        return False
-                    else:
-                        return selected_server[:-1]
+                    return False
 
     def update_all(self, client_mov):
         try:
@@ -219,8 +170,8 @@ class ServerSide:
         try:
             current_socket.shutdown(socket.SHUT_RDWR)
             current_socket.close()
-            self.client_sockets.remove(current_socket)
         finally:
+            self.client_sockets.remove(current_socket)
             return
 
 

@@ -6,4 +6,5 @@ class constant:
     NEW_GAMESERVER = 3
     GAMESERVER_UPDATE = 4
     SERVER_QUIT = 5
-    CHECK_LIVE = 6
+    SERVER_REQUEST = 6
+    CHECK_LIVE = 7

@@ -16,12 +16,11 @@ class ClientSide:
     def __init__(self, server_port, server_ip, max_clients, database_ip):
         self.my_socket = socket.socket()
         ip = database_ip
-        port = 6666
-        print("Server " + str(ip) + "," + str(port))
+        port = 7777
+        logging.debug("connected ot " + str(ip) + "," + str(port))
         self.my_socket.connect((ip, port))
         self.send(pickle.dumps([constant.NEW_GAMESERVER, server_port, server_ip.encode(), max_clients]))
         self.read()
-        logging.debug("client side connected...")
 
     def send(self, data):
         self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
@@ -36,27 +35,26 @@ class ClientSide:
         except Exception as e:
             logging.error(e)
 
-    def make_message(self, game, space):
+    def make_message(self, players, space):
         stats = [constant.GAMESERVER_UPDATE, space]
         print("sending")
-        for player in game.players:
-            stats.append((player.name, player.score / ((game.round_time * (10 / 1000)) / 60)))
+        for player in players:
+            stats.append((player.name, player.score))  # / ((game.round_time * (10 / 1000)) / 60)
         return stats
 
-    def run(self, game, space):
-        stats = self.make_message(game, space)
+    def run(self, players, space):
+        stats = self.make_message(players, space)
         self.send(pickle.dumps(stats))
         self.read()
 
-    def close(self, game, space):
-        stats = self.make_message(game, space)
+    def close(self, players, space):
+        stats = self.make_message(players, space)
         self.send(pickle.dumps(stats))
         self.read()
         self.send(pickle.dumps((constant.SERVER_QUIT, constant.QUITING)))
-        self.read()
 
 
-class server:
+class ServerSide:
     def __init__(self, database_ip):
         self.game = Game()
         self.SERVER_PORT = 55555
@@ -80,7 +78,7 @@ class server:
             self.game.restart()
 
     def close_server(self):
-        self.client_side.close(self.game, self.max_clients - self.number_of_client)
+        self.client_side.close(self.game.players, self.max_clients - self.number_of_client)
         sys.exit()
 
     def print_client_sockets(self, client_sockets):
@@ -104,10 +102,7 @@ class server:
 
     def change_client_name(self, current_socket, name):
         player = self.players_conection[current_socket]
-        # print(name, player.name)
-        player.name = name
-        player.orientation = Orientation(player.rect.x, player.rect.y, player.rect.width, player.rect.height,
-                                         player.angle, 'red', "1," + str(player.name))
+        player.change_name(name)
 
     def client_mesege(self, current_socket):
         try:
@@ -205,7 +200,7 @@ class server:
             self.game.game_time -= 1
 
             if self.game.game_time == 0:
-                self.client_side.run(self.game, self.max_clients - self.number_of_client)
+                self.client_side.run(self.game.players, self.max_clients - self.number_of_client)
 
             if self.game.game_time <= 0:
                 self.game.leaderboard.winner(self.game.players)
@@ -219,7 +214,6 @@ class server:
 class Game:
     def __init__(self):
         self.game_time = 2000
-        self.round_time = self.game_time
         self.SCREEN_WIDTH = 1100
         self.SCREEN_HEIGHT = 600
 
@@ -278,7 +272,7 @@ class Game:
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
 
             self.owner = player
-            self.bullet_speed = 14
+            self.bullet_speed = 15
 
             self.orientation = Orientation(self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.angle,
                                            'white', "")
@@ -368,6 +362,10 @@ class Game:
             self.orientation.angle = self.angle
             return val
 
+        def change_name(self, name):
+            self.name = name
+            self.orientation.name = "0," + str(name)
+
     def colisions(self):
         self.leaderboard.change_places(self.players)
         hit = pygame.sprite.Group()
@@ -423,17 +421,21 @@ class Game:
             text = self.font.render('leaderboard', True, (255, 0, 0), (0, 0, 0))
             text_name = "leaderboard"
             textRect = text.get_rect()
-            textRect.center = (920, 10)
+            textRect.center = (920, 15)
             self.txts.append((text_name, textRect, 40, 'white'))
 
-            leader_place = 70
+            leader_place = 75
             for player in players:
-                text = self.font.render(str(player.name) + "           " + str(player.score), True, (255, 0, 0),
+                space = " "
+                for i in range(16 - len(str(player.name)) - len(str(player.score))):
+                    space += " "
+                # print(str(player.name) + str(space) + "score")
+                text_name = str(player.name) + space + str(player.score)
+                text = self.font.render(text_name, True, (255, 0, 0),
                                         (0, 0, 0))
-                text_name = str(player.name) + "           " + str(player.score)
                 textRect = text.get_rect()
                 textRect.center = (300 // 2 + 800, leader_place)
-                self.txts.append((text_name, textRect, 32, 'white'))
+                self.txts.append((text_name, textRect, 30, 'white'))
                 leader_place += 50
 
         def Serialize(self, num):
@@ -486,8 +488,12 @@ def starting(database_ip, *args):
     for arg in args:
         print(arg)
     pygame.init()
-    me = server(database_ip)
-    me.game_maker()
+    try:
+        me = ServerSide(database_ip)
+        me.game_maker()
+    except Exception as e:
+        logging.error(e)
+        pygame.quit()
 
 
 def main():
