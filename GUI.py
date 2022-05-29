@@ -58,7 +58,7 @@ class ClientSide:
             self.rot_image = pygame.transform.rotate(self.rectangle, self.angle)
             self.rot_image_rect = self.rot_image.get_rect(center=self.rect.center)
             self.name = name
-            self.font = pygame.font.Font('freesansbold.ttf', int(self.angle))
+            self.font = pygame.font.Font("C:\Windows\Fonts\Arial.ttf", int(self.angle))
             try:
                 obj_name = self.name.split(",")
                 self.text = self.font.render(obj_name[1], True, self.color, (0, 0, 0))
@@ -607,7 +607,7 @@ class TopLevelMother:
 
 class TopLevel1(TopLevelMother):
     def __init__(self, top, ip):
-        super(TopLevel1, self).__init__(top, '''welcome to\nGENERCUBE,0.5,0.12, 160''', '''CONNECT TO USER''',
+        super(TopLevel1, self).__init__(top, '''welcome to\nGENERCUBE,0.5,0.1, 160''', '''CONNECT TO USER''',
                                         '''INCORRECT NAME OR PASSWORD''', ip, 1)
         self.ip = ip
 
@@ -745,13 +745,13 @@ class screen_manager:
         return home_screen.ip, home_screen.port, home_screen.gui_run
 
     def screen_control_loop(self):
+        logging.basicConfig(level=logging.DEBUG)
         connector_ip, connector_port, name = self.entering()
         gui_run = True
         while gui_run:
             port, ip, gui_run = self.stay_screen(connector_ip, connector_port, name)
             if not gui_run:
                 break
-            logging.basicConfig(level=logging.DEBUG)
             try:
                 me = ClientSide(ip, port, name)
                 me.game_run()
@@ -761,14 +761,15 @@ class screen_manager:
 
 
 def main():
-    freeze_support()
     SM = screen_manager()
     SM.screen_control_loop()
 
 
 if __name__ == "__main__":
-    # try:
-    main()
-    """except Exception as e:
-        print(f"error occurred-> {e}")
-        input("wut?")"""
+    freeze_support()
+    multiprocessing.set_start_method('spawn')
+    try:
+        main()
+    except Exception as e:
+        print(f"error occurred-> {e.with_traceback(sys.exc_info()[2])}")
+        input("wut?")

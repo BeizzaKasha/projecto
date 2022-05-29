@@ -40,7 +40,7 @@ class ClientSide:
         stats = [constant.GAMESERVER_UPDATE, space]
         print("sending")
         for player in players:
-            stats.append((player.name, player.score))  # / ((game.round_time * (10 / 1000)) / 60)
+            stats.append((player.name, player.score))
         return stats
 
     def run(self, players, space):
@@ -70,7 +70,7 @@ class ServerSide:
         self.messages_to_send = []
         self.number_of_client = 0
         self.players_conection = {}
-        self.active = False  # subprocess.popen
+        self.active = False
 
     def game_maker(self):
         while True:
@@ -149,7 +149,6 @@ class ServerSide:
                     self.change_client_name(current_socket, move[1])
                     players_movement.append((move[2], current_socket))
                     self.players_conection[move[2]] = current_socket
-                    # mov_makers.append(current_socket)
         return players_movement
 
     def make_messeges(self, rlist, players, enemies, all_sprites, LeaderBoard):
@@ -426,7 +425,7 @@ class Game:
 
             self.txts = []
 
-            self.font = pygame.font.Font('freesansbold.ttf', 32)
+            self.font = pygame.font.Font("C:\Windows\Fonts\Arial.ttf", 32)
 
         def set_place(self):
             place = [self.bord, self.line]
@@ -446,7 +445,6 @@ class Game:
                 space = " "
                 for i in range(16 - len(str(player.name)) - len(str(player.score))):
                     space += " "
-                # print(str(player.name) + str(space) + "score")
                 text_name = str(player.name) + space + str(player.score)
                 text = self.font.render(text_name, True, (255, 0, 0),
                                         (0, 0, 0))
@@ -481,7 +479,7 @@ class Game:
                         winner = player
                 color = (255, 215, 0)
                 size = 60
-                font = pygame.font.Font('freesansbold.ttf', size)
+                font = pygame.font.Font("C:\Windows\Fonts\Arial.ttf", size)
                 text = font.render(str(winner.name) + " is the winner!!!", True, color)
                 text_name = str(winner.name) + " is the winner!!!"
                 textRect = text.get_rect()
@@ -509,7 +507,7 @@ def starting(database_ip, *args):
         me = ServerSide(database_ip)
         me.game_maker()
     except Exception as e:
-        logging.error(e)
+        logging.error(f" game server running problem: {e.with_traceback()}")
         pygame.quit()
 
 
