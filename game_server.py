@@ -1,10 +1,11 @@
+import time
 import select
 import logging
 import socket
 import pickle
 import sys
 from Constants import constant
-
+import hashlib
 import pygame
 import random
 import math
@@ -19,7 +20,7 @@ class ClientSide:
         port = 7777
         logging.debug("connected ot " + str(ip) + "," + str(port))
         self.my_socket.connect((ip, port))
-        self.send(pickle.dumps([constant.NEW_GAMESERVER, server_port, server_ip.encode(), max_clients]))
+        self.send(pickle.dumps((constant.NEW_GAMESERVER, server_port, server_ip.encode(), max_clients)))
         self.read()
 
     def send(self, data):
@@ -105,13 +106,18 @@ class ServerSide:
         player.change_name(name)
 
     def client_mesege(self, current_socket):
+        rsv = ""
         try:
-            rsv = current_socket.recv(1024)  # get the client messege, do what ever u want with it--->
+            lenoflen = int(current_socket.recv(4).decode())
+            lenght = int(current_socket.recv(lenoflen).decode())
+            rsv = current_socket.recv(lenght)
             rsv = pickle.loads(rsv)
+            # print(rsv)
         except:
             logging.error("problem with resiving a message: " + str(current_socket))
-            rsv = "quit"
-        return rsv
+            rsv = constant.QUITING
+        finally:
+            return rsv
 
     def get_from_clients(self, rlist):
         players_movement = []
@@ -126,12 +132,23 @@ class ServerSide:
                     self.player_quit(current_socket)
             else:  # what to do with client
                 move = self.client_mesege(current_socket)
-                if move == "quit":
+                if move == constant.QUITING:
                     self.player_quit(current_socket)
-                else:
-                    self.change_client_name(current_socket, move[0])
-                    players_movement.append((move[1], current_socket))
-                    self.players_conection[move[1]] = current_socket
+                elif move[0] == constant.USER_CONNECTING:  # user just connected
+                    date = time.localtime()
+                    minute_now = str(
+                        hashlib.md5((str(date[3]).zfill(2) + ":" + str(date[4]).zfill(2)).encode()).digest())
+                    minute_plus_one = str(
+                        hashlib.md5((str(date[3]).zfill(2) + ":" + str(int(date[4] + 1)).zfill(2)).encode()).digest())
+                    print(move[1].decode(), minute_now)
+                    print(move[2].decode(), minute_plus_one)
+                    if move[1] != minute_now.decode() and move[2] != minute_plus_one.decode():
+                        logging.debug("wrong client")
+                        self.player_quit(current_socket)
+                elif move[0] == constant.USER_ACTION:  # user input
+                    self.change_client_name(current_socket, move[1])
+                    players_movement.append((move[2], current_socket))
+                    self.players_conection[move[2]] = current_socket
                     # mov_makers.append(current_socket)
         return players_movement
 

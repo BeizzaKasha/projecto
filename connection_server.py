@@ -3,6 +3,7 @@ import logging
 import socket
 import pickle
 from Constants import constant
+import hashlib
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -69,6 +70,7 @@ class ServerSide:
                 players_movement = (current_socket, constant.CHECK_LIVE)
             elif client_mov[0] == constant.GAMESERVER_UPDATE:  # game server update
                 self.game_servers[current_socket][2] = client_mov[1]
+                # print(self.game_servers[current_socket])
                 self.client_side.send(pickle.dumps((constant.GAMESERVER_UPDATE, client_mov[2:])))
                 is_ok = self.client_side.read()
                 players_movement = (current_socket, is_ok)
@@ -81,8 +83,9 @@ class ServerSide:
             return players_movement
 
     def chek_user_request(self, name, password, date, client_name):
-        if name != "" and password != "" and len(name) < 10:
-            return [constant.USER_CONNECTING, name, password, date, client_name]
+        if name != "" and password != "" and len(name) < 10 and client_name != "":
+            print(str(hashlib.md5(password.encode())))
+            return [constant.USER_CONNECTING, name, str(hashlib.md5(password.encode()).digest()), date, client_name]
         else:
             logging.debug("not sending")
             return False
@@ -94,28 +97,40 @@ class ServerSide:
             print(f"no selected server")
             return False
         for server in self.game_servers:
-            if self.game_servers[server][2] < minimum and self.game_servers[server][2] != 0:
-                selected_server = [self.game_servers[server][0], self.game_servers[server][1], server]
-                print(f"selected_server = {selected_server}")
-                minimum = self.game_servers[server][2]
-            if selected_server is None:
-                print(f"why did we get here?")
-                return False
-            else:
-                try:
-                    data = pickle.dumps([constant.CHECK_LIVE, selected_server[:-1]])
-                    selected_server[-1].send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
-                    return selected_server[:-1]
-                except:
-                    self.game_servers.pop(selected_server[-1])
-                    print("servers: " + str(self.game_servers))
-                    self.client_quit(selected_server[-1])
-                    selected_server = self.pick_server()
-                    if not selected_server:
-                        print(f"no selected server x2")
-                        return False
-                    else:
+            print(self.game_servers[server])
+            try:
+                if self.game_servers[server][2] < minimum and self.game_servers[server][2] != 0:
+                    selected_server = [self.game_servers[server][0], self.game_servers[server][1], server]
+                    print(f"selected_server = {selected_server}")
+                    minimum = self.game_servers[server][2]
+                if selected_server is None:
+                    print(f"why did we get here?")
+                    return False
+                else:
+                    try:
+                        data = pickle.dumps([constant.CHECK_LIVE, selected_server[:-1]])
+                        selected_server[-1].send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
                         return selected_server[:-1]
+                    except:
+                        self.game_servers.pop(selected_server[-1])
+                        print("servers: " + str(self.game_servers))
+                        self.client_quit(selected_server[-1])
+                        selected_server = self.pick_server()
+                        if not selected_server:
+                            print(f"no selected server x2")
+                            return False
+                        else:
+                            return selected_server[:-1]
+            except:
+                self.game_servers.pop(selected_server[-1])
+                print("servers: " + str(self.game_servers))
+                self.client_quit(selected_server[-1])
+                selected_server = self.pick_server()
+                if not selected_server:
+                    print(f"no selected server x2")
+                    return False
+                else:
+                    return selected_server[:-1]
 
     def newclient(self, current_socket):
         connection, client_address = current_socket.accept()

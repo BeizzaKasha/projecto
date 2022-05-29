@@ -9,6 +9,7 @@ from Constants import constant
 import game_server
 import multiprocessing
 from multiprocessing import freeze_support
+import hashlib
 
 import pygame
 from pygame.locals import (
@@ -28,6 +29,12 @@ class ClientSide:
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print("GUI- " + str(ip) + "," + str(port))
         self.my_socket.connect((ip, port))
+        """date = time.localtime()
+        print(str(hashlib.md5((str(date[3]).zfill(2) + ":" + str(date[4]).zfill(2)).encode()).digest()))"""
+        """date = time.localtime()
+        minute_now = hashlib.md5((str(date[3]).zfill(2) + ":" + str(date[4]).zfill(2)).encode()).digest()
+        minute_plus_one = hashlib.md5((str(date[3]).zfill(2) + ":" + str(int(date[4] + 1)).zfill(2)).encode()).digest()
+        self.my_socket.send(pickle.dumps(hashlib.md5((constant.USER_CONNECTING, minute_now, minute_plus_one))))"""
         logging.info("connect to server at {0} with port {1}".format(ip, port))
         pygame.init()
         self.SCREEN_WIDTH = 1100
@@ -84,7 +91,8 @@ class ClientSide:
                     running = self.close(True)
 
             movement = self.mov()
-            self.my_socket.send(pickle.dumps((self.name, movement)))
+            self.send(pickle.dumps((constant.USER_ACTION, self.name, movement)))
+
             self.screen.fill((0, 0, 0))
 
             self.read()
@@ -145,6 +153,9 @@ class ClientSide:
         except Exception as e:
             logging.error(f"reading error in client_side in GUI: {e}")
             self.close(True)
+
+    def send(self, data):
+        self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
 
     def close(self, cause):
         if cause:
@@ -250,17 +261,16 @@ class HomeScreen:
 
         self.send(pickle.dumps([constant.HOMESCREEN_CONNECTS, self.name.encode()]))
         data = self.read()
-        logging.debug(f"server to connect: {data}")
         self.player = data[0]
         self.position = data[1]
         self.send(pickle.dumps([constant.SERVER_REQUEST, self.name.encode()]))
         data = self.read()
+        logging.debug(f"server to connect: {data}")
         if not data:
             self.open_server((connectir_ip, "helo"))
             self.send(pickle.dumps([constant.SERVER_REQUEST, self.name.encode()]))
             data = self.read()
-            # time.sleep(0.2)
-            print(data)
+            logging.debug(f"server to connect: {data}")
         ip, port = data
         self.ip = ip
         self.port = port
@@ -278,7 +288,7 @@ class HomeScreen:
         self.Label4 = tk.Label(self.top)
 
         self.Label1 = tk.Label(self.top)
-        self.Label1.place(relx=0.05, rely=0.01, height=35, width=600)
+        self.Label1.place(relx=0.05, rely=0.01, height=60, width=600)
         self.Label1.configure(activebackground="#f9f9f9")
         self.Label1.configure(activeforeground="black")
         self.Label1.configure(anchor='w')
@@ -288,11 +298,11 @@ class HomeScreen:
         self.Label1.configure(foreground="#000000")
         self.Label1.configure(highlightbackground="#d9d9d9")
         self.Label1.configure(highlightcolor="black")
-        self.Label1.configure(text='''WELCOME TO HOME SCREEN ''' + str(self.player[5]))
+        self.Label1.configure(text='''welcome to GENERCUBE\n      HOME SCREEN ''' + str(self.player[5]))
         self.Label1.config(font=('Comic Sans MS', 20))
 
         self.Label2 = tk.Label(self.top)
-        self.Label2.place(relx=0, rely=0.15, height=30, width=200)
+        self.Label2.place(relx=0, rely=0.2, height=30, width=200)
         self.Label2.configure(activebackground="#f9f9f9")
         self.Label2.configure(activeforeground="black")
         self.Label2.configure(anchor='w')
@@ -574,7 +584,7 @@ class TopLevelMother:
     def entername(self):
         logging.debug(f"username = {self.Entry1.get()}")
         logging.debug(f"password = {self.Entry2.get()}")
-        self.send(pickle.dumps((constant.USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), "", "")))
+        self.send(pickle.dumps((constant.USER_CONNECTING, self.Entry1.get(), self.Entry2.get(), "", "player")))
         try:
             lenoflen = int(self.my_socket.recv(4).decode())
             lenght = int(self.my_socket.recv(lenoflen).decode())
@@ -597,7 +607,7 @@ class TopLevelMother:
 
 class TopLevel1(TopLevelMother):
     def __init__(self, top, ip):
-        super(TopLevel1, self).__init__(top, '''welcome to\nGENERCUBE,0.5,0.15, 160''', '''CONNECT TO USER''',
+        super(TopLevel1, self).__init__(top, '''welcome to\nGENERCUBE,0.5,0.12, 160''', '''CONNECT TO USER''',
                                         '''INCORRECT NAME OR PASSWORD''', ip, 1)
         self.ip = ip
 
@@ -757,8 +767,8 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
+    # try:
+    main()
+    """except Exception as e:
         print(f"error occurred-> {e}")
-        input("wut?")
+        input("wut?")"""
