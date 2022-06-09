@@ -186,6 +186,7 @@ class ServerSide:
                 self.messages_to_send.remove(message)
             except Exception as e:
                 logging.error("problem with sending a message: " + str(current_socket))
+                self.player_quit(current_socket)
 
     def gamerun(self):
         running = True

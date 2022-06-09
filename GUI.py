@@ -43,7 +43,7 @@ class ClientSide:
         self.display_surface = pygame.display.set_mode((1000, 20))
         pygame.display.set_caption('Show Text')
         self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
-        self.game = ""
+        self.game = "no image"
         self.name = name
 
     class Demo_print(pygame.sprite.Sprite):
@@ -95,9 +95,15 @@ class ClientSide:
 
             self.screen.fill((0, 0, 0))
 
-            self.read()
+            reading = self.getting_message()
+            if reading == constant.QUITING:
+                running = False
 
-            self.built_all(self.game)
+            # try:
+            if self.game != "no image":
+                self.built_all(self.game)
+            # except Exception as e:
+            #     logging.error(f"building error: {e}")
             pygame.display.flip()
         pygame.quit()
 
@@ -139,20 +145,35 @@ class ClientSide:
             val = "fire"
         return move, val, (mx, my)
 
-    def read(self):
+    def getting_message(self):
         try:
-            lenoflen = int(self.my_socket.recv(4).decode())
-            lenght = int(self.my_socket.recv(lenoflen).decode())
-            print(str(lenght))
-            self.game = self.my_socket.recv(lenght)
+            self.read()
+        except Exception as e:
+            logging.error(f"reading error in client_side in GUI: {e}")
+            self.game = "no image"
+            try:
+                self.read()
+                print(self.game)
+            except Exception as e:
+                print(e)
+            # self.close(True)
+            # return constant.QUITING
+
+    def read(self):
+        lenoflen = int(self.my_socket.recv(4).decode())
+        lenght = int(self.my_socket.recv(lenoflen).decode())
+        print(str(lenght))
+        self.game = self.my_socket.recv(lenght)
+        print(f"len of game: {len(self.game)}")
+        if lenght != len(self.game):
+            self.game = "no image"
+            print(self.my_socket.recv(lenght - len(self.game)))
+        else:
             self.game = pickle.loads(self.game)
             if self.game == "close":
                 print("exit")
                 self.close(False)
-
-        except Exception as e:
-            logging.error(f"reading error in client_side in GUI: {e}")
-            self.close(True)
+                return constant.QUITING
 
     def send(self, data):
         self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
@@ -756,7 +777,7 @@ class screen_manager:
                 me = ClientSide(ip, port, name)
                 me.game_run()
             except Exception as e:
-                logging.error(e)
+                logging.error(f"universal error: {e}")
                 continue
 
 

@@ -8,3 +8,4 @@ class constant:
     SERVER_QUIT = 5
     SERVER_REQUEST = 6
     CHECK_LIVE = 7
+    USER_ACTION = 8
