@@ -186,7 +186,6 @@ class ServerSide:
                 self.messages_to_send.remove(message)
             except Exception as e:
                 logging.error("problem with sending a message: " + str(current_socket))
-                self.player_quit(current_socket)
 
     def gamerun(self):
         running = True
@@ -213,7 +212,7 @@ class ServerSide:
 
             self.game.colisions()
 
-            pygame.time.delay(10)
+            pygame.time.delay(20)
             self.game.game_time -= 1
 
             if self.game.game_time == 0:

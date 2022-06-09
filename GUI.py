@@ -94,7 +94,6 @@ class ClientSide:
             self.send(pickle.dumps((constant.USER_ACTION, self.name, movement)))
 
             self.screen.fill((0, 0, 0))
-
             reading = self.getting_message()
             if reading == constant.QUITING:
                 running = False
@@ -160,20 +159,20 @@ class ClientSide:
             # return constant.QUITING
 
     def read(self):
+        self.game = b""
         lenoflen = int(self.my_socket.recv(4).decode())
         lenght = int(self.my_socket.recv(lenoflen).decode())
         print(str(lenght))
-        self.game = self.my_socket.recv(lenght)
-        print(f"len of game: {len(self.game)}")
-        if lenght != len(self.game):
-            self.game = "no image"
-            print(self.my_socket.recv(lenght - len(self.game)))
-        else:
-            self.game = pickle.loads(self.game)
-            if self.game == "close":
-                print("exit")
-                self.close(False)
-                return constant.QUITING
+        while lenght > 0:
+            self.game += self.my_socket.recv(lenght)
+            print(f"len of game: {len(self.game)}")
+            lenght -= len(self.game)
+        self.game = pickle.loads(self.game)
+        print(self.game)
+        if self.game == "close":
+            print("exit")
+            self.close(False)
+            return constant.QUITING
 
     def send(self, data):
         self.my_socket.send(str(len(str(len(data)))).zfill(4).encode() + str(len(data)).encode() + data)
