@@ -150,11 +150,11 @@ class ClientSide:
         except Exception as e:
             logging.error(f"reading error in client_side in GUI: {e}")
             self.game = "no image"
-            try:
+            """try:
                 self.read()
-                print(self.game)
+                # print(self.game)
             except Exception as e:
-                print(e)
+                print(e)"""
             # self.close(True)
             # return constant.QUITING
 
@@ -163,12 +163,11 @@ class ClientSide:
         lenoflen = int(self.my_socket.recv(4).decode())
         lenght = int(self.my_socket.recv(lenoflen).decode())
         print(str(lenght))
-        while lenght > 0:
+        while lenght - len(self.game)> 0:
             self.game += self.my_socket.recv(lenght)
             print(f"len of game: {len(self.game)}")
-            lenght -= len(self.game)
         self.game = pickle.loads(self.game)
-        print(self.game)
+        # print(self.game)
         if self.game == "close":
             print("exit")
             self.close(False)

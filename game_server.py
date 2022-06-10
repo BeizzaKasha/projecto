@@ -36,20 +36,22 @@ class ClientSide:
         except Exception as e:
             logging.error(e)
 
-    def make_message(self, players, space):
+    def make_message(self, players, quiters, space):
         stats = [constant.GAMESERVER_UPDATE, space]
         print("sending")
         for player in players:
             stats.append((player.name, player.score))
+        for player in quiters:
+            stats.append((player.name, player.score))
         return stats
 
-    def run(self, players, space):
-        stats = self.make_message(players, space)
+    def run(self, players, quiters, space):
+        stats = self.make_message(players, quiters, space)
         self.send(pickle.dumps(stats))
         self.read()
 
-    def close(self, players, space):
-        stats = self.make_message(players, space)
+    def close(self, players, quiters, space):
+        stats = self.make_message(players, quiters, space)
         self.send(pickle.dumps(stats))
         self.read()
         self.send(pickle.dumps((constant.SERVER_QUIT, constant.QUITING)))
@@ -79,7 +81,7 @@ class ServerSide:
             self.game.restart()
 
     def close_server(self):
-        self.client_side.close(self.game.players, self.max_clients - self.number_of_client)
+        self.client_side.close(self.game.players, self.game.quiters, self.max_clients - self.number_of_client)
         sys.exit()
 
     def print_client_sockets(self, client_sockets):
@@ -166,7 +168,9 @@ class ServerSide:
 
     def player_quit(self, current_socket):
         logging.info(str(current_socket) + " left")
-        self.game.players.remove(self.players_conection[current_socket])
+        player = self.players_conection[current_socket]
+        self.game.quiters.add(player)
+        self.game.players.remove(player)
         self.players_conection.pop(current_socket)
         current_socket.shutdown(socket.SHUT_RDWR)
         current_socket.close()
@@ -191,7 +195,7 @@ class ServerSide:
         running = True
 
         while running:
-            rlist, wlist, xlist = select.select([self.server_socket] + self.client_sockets, [], [], 0.1)
+            rlist, wlist, xlist = select.select([self.server_socket] + self.client_sockets, [], [])
             player_movement = self.get_from_clients(rlist)
 
             if self.game.game_time > 0:
@@ -212,11 +216,11 @@ class ServerSide:
 
             self.game.colisions()
 
-            pygame.time.delay(20)
+            pygame.time.delay(10)
             self.game.game_time -= 1
 
             if self.game.game_time == 0:
-                self.client_side.run(self.game.players, self.max_clients - self.number_of_client)
+                self.client_side.run(self.game.players, self.game.quiters, self.max_clients - self.number_of_client)
 
             if self.game.game_time <= 0:
                 self.game.leaderboard.winner(self.game.players)
@@ -234,6 +238,7 @@ class Game:
         self.SCREEN_HEIGHT = 600
 
         self.players = pygame.sprite.Group()
+        self.quiters = pygame.sprite.Group()
 
         self.enemies = pygame.sprite.Group()
         self.all_sprites = pygame.sprite.Group()

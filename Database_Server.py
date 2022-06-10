@@ -44,15 +44,15 @@ class ServerSide:
     def client_actions(self, current_socket):
         players_movement = []
         client_mov = self.client_mesege(current_socket)
-        # print(client_mov)
         if client_mov == constant.QUITING:
             self.client_quit(current_socket)
         elif client_mov[0] == constant.GAMESERVER_UPDATE:  # game_server
-            self.update_all(client_mov[1:])
+            print(client_mov[1])
+            self.update_all(client_mov[1])
             players_movement.append((current_socket, "I love..."))
         elif client_mov[0] == constant.USER_CONNECTING:  # user connects
             is_ok = self.check_connection(client_mov[1], client_mov[2], client_mov[3], client_mov[4])
-            print(f"is_ok = {is_ok}")
+            # print(f"is_ok = {is_ok}")
             players_movement.append((current_socket, is_ok))
         elif client_mov[0] == constant.HOMESCREEN_CONNECTS:  # home screen
             player = self.db.read(client_mov[1].decode())
@@ -82,7 +82,7 @@ class ServerSide:
                     self.db.add(name, password, client_name, date, "", 0, True)
                     return True
                 except Exception as e:
-                    print(e)
+                    # print(e)
                     return False
         else:
             if not self.db.is_exist(name):
@@ -101,11 +101,12 @@ class ServerSide:
                 self.update_individual(player)
             return True
         except Exception as e:
-            print(e)
+            logging.info(f"universal updating error: {e}")
             return False
 
     def update_individual(self, client_player):
         database_player = self.db.read(client_player[0])
+        print(client_player, database_player)
         name = database_player[0]
         password = database_player[1]
         date = database_player[2]
@@ -127,7 +128,7 @@ class ServerSide:
                             str(history) + "," + str(client_player[1]),
                             (client_player[1] + points) / (len(former_points) + 1), True)
         except Exception as e:
-            print(e)
+            logging.info(f"{name} updating problem: {e}")
             self.db.add(name, password, client_name, date, client_player[1], client_player[1], True)
         finally:
             logging.info("update successful")
@@ -239,13 +240,13 @@ class Database:
                   "(PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord, IsConnect)" \
                   " VALUES (%s, %s, %s, %s, %s, %s, %s)"
             val = (PlayerName, PlayerPassword, ClientName, CreationTime, GameHistory, PersonalRecord, is_connect)
-            print(val)
+            # print(val)
             self.mycursor.execute(sql, val)
             self.mydb.commit()
 
             return True  # if add successful return True
         except Exception as e:
-            print(e)
+            logging.error(e)
             return False  # if doesn't work return False
 
     def delete(self, name):
@@ -256,7 +257,7 @@ class Database:
             self.mydb.commit()
             return myresult  # if delete successfully return what was deleted
         except Exception as e:
-            print(e)
+            logging.info(f"deleting error: {e}")
             return False  # if doesn't work return False
 
     def read(self, name):

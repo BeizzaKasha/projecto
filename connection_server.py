@@ -77,7 +77,7 @@ class ServerSide:
             elif client_mov[0] == constant.SERVER_QUIT:  # game server quiting
                 self.game_servers[current_socket].pop()
                 self.client_quit(current_socket)
-            elif client_mov[0] == constant.SERVER_REQUEST:
+            elif client_mov[0] == constant.SERVER_REQUEST:  # GUI requesting for server
                 server = self.pick_server()
                 players_movement = (current_socket, server)
             return players_movement
@@ -122,15 +122,18 @@ class ServerSide:
                         else:
                             return selected_server[:-1]
             except:
-                self.game_servers.pop(selected_server[-1])
-                print("servers: " + str(self.game_servers))
-                self.client_quit(selected_server[-1])
-                selected_server = self.pick_server()
-                if not selected_server:
-                    print(f"no selected server x2")
-                    return False
+                if selected_server is not None:
+                    self.game_servers.pop(selected_server[-1])
+                    print("servers: " + str(self.game_servers))
+                    self.client_quit(selected_server[-1])
+                    selected_server = self.pick_server()
+                    if not selected_server:
+                        print(f"no selected server x2")
+                        return False
+                    else:
+                        return selected_server[:-1]
                 else:
-                    return selected_server[:-1]
+                    return False
 
     def newclient(self, current_socket):
         connection, client_address = current_socket.accept()
