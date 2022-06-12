@@ -11,7 +11,8 @@ logging.basicConfig(level=logging.INFO)
 class ServerSide:
     def __init__(self):
         self.SERVER_PORT = 6666
-        self.SERVER_IP = str(socket.gethostname())
+        hostname = socket.gethostname()
+        self.SERVER_IP = str(socket.gethostbyname(hostname))
         logging.info("Setting up server at-> " + self.SERVER_IP)
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))

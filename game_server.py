@@ -61,7 +61,8 @@ class ServerSide:
     def __init__(self, database_ip):
         self.game = Game()
         self.SERVER_PORT = 55555
-        self.SERVER_IP = str(socket.gethostname())
+        hostname = socket.gethostname()
+        self.SERVER_IP = str(socket.gethostbyname(hostname))
         logging.debug("Setting up server...")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.SERVER_IP, self.SERVER_PORT))
